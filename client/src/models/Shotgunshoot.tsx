@@ -32,7 +32,7 @@ const showGunStore = useAppStore((s) => s.showGun);
 const shouldShow = isVisible ?? showGunStore;
 
   // --- load animated rig (hands + shotgun) ---
-  const gltf = useGLTF("/shotgunshoot.glb");
+  const gltf = useGLTF("/shotgunshoot-transformed.glb");
   const { actions, mixer } = useAnimations(gltf.animations, group) as { actions: Partial<GLTFActions>; mixer?: THREE.AnimationMixer };
 
   // --- ammo state (coach gun style 2+reserve) + HUD events ---
@@ -231,4 +231,4 @@ return (
 
 }
 
-useGLTF.preload("/shotgunshoot.glb");
+useGLTF.preload("/shotgunshoot-transformed.glb");

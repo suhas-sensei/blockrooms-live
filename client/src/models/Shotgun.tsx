@@ -23,10 +23,11 @@ type GLTFResult = GLTF & {
     Wood_001: THREE.MeshStandardMaterial
     DarkSteel: THREE.MeshStandardMaterial
   }
+  animations: GLTFAction[]
 }
 
 export function Shotgun(props: JSX.IntrinsicElements['group']) {
-  const { nodes, materials } = useGLTF("/shotgun.glb") as GLTFResult
+  const { nodes, materials } = useGLTF("/shotgun-transformed.glb") as GLTFResult
   return (
     <group {...props} dispose={null}>
       <group rotation={[-Math.PI / 2, 0, 0]}>
@@ -55,4 +56,4 @@ export function Shotgun(props: JSX.IntrinsicElements['group']) {
   )
 }
 
-useGLTF.preload("/shotgun.glb")
+useGLTF.preload("/shotgun-transformed.glb")

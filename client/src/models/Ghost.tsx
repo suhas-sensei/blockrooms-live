@@ -15,7 +15,7 @@ type GhostGLTF = GLTF
 
 export function Ghost(props: JSX.IntrinsicElements['group']) {
   // Load once from cache
-  const { scene, animations } = useGLTF("/ghost.glb") as GhostGLTF
+  const { scene, animations } = useGLTF("/ghost-transformed.glb") as GhostGLTF
 
   // ⛑️ Per-instance deep clone (bones + meshes). No refs shared with others.
   const model = useMemo(() => SkeletonUtils.clone(scene) as THREE.Group, [scene])
@@ -66,4 +66,4 @@ export function Ghost(props: JSX.IntrinsicElements['group']) {
   )
 }
 
-useGLTF.preload('/ghost.glb')
+useGLTF.preload('/ghost-transformed.glb')

@@ -23,12 +23,12 @@ type GLTFResult = GLTF & {
     Material_295: THREE.MeshStandardMaterial;
     Material_316: THREE.MeshStandardMaterial;
   };
-  // animations: GLTFAction[]
+  animations: GLTFAction[];
 };
 
 export function Car1(props: JSX.IntrinsicElements["group"]) {
   const { nodes, materials } = useGLTF(
-    "/car1.glb"
+    "/car1-transformed.glb"
   ) as GLTFResult;
   return (
     <group {...props} dispose={null}>
@@ -55,5 +55,5 @@ export function Car1(props: JSX.IntrinsicElements["group"]) {
 }
 
 useGLTF.preload(
-  "/car1.glb"
+  "/car1-transformed.glb"
 );
