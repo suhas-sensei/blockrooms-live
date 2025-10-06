@@ -12,6 +12,10 @@ import { useGLTF } from '@react-three/drei'
 import { GLTF } from 'three-stdlib'
 import MuzzleFlash from "../components/game/MuzzleFlash";
 
+interface GLTFAction extends THREE.AnimationClip {
+  name: string;
+}
+
 type GLTFResult = GLTF & {
   nodes: {
     defaultMaterial: THREE.Mesh

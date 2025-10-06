@@ -23,6 +23,19 @@ const [flashKick, setFlashKick] = React.useState(0);
 
   const { camera, scene } = useThree();
 
+  // Cache shootable objects for performance (updated periodically)
+  const shootableObjectsRef = useRef<THREE.Object3D[]>([]);
+  const shootableCacheFrame = useRef(0);
+
+  // Cache reusable vectors and raycaster for performance
+  const cachedRaycaster = useRef(new THREE.Raycaster());
+  const cachedDirection = useRef(new THREE.Vector3());
+  const cachedGunPosition = useRef(new THREE.Vector3());
+  const cachedForward = useRef(new THREE.Vector3());
+  const cachedRight = useRef(new THREE.Vector3());
+  const cachedDown = useRef(new THREE.Vector3());
+  const cachedRecoilOffset = useRef(new THREE.Vector3());
+
   // Get gun visibility from store
   const { showGun } = useAppStore();
 
@@ -199,11 +212,13 @@ const [flashKick, setFlashKick] = React.useState(0);
     // Kick the model's shoot animation
     popRef.current?.playShoot();
 
-    // Raycast / hit detection (unchanged)
-    const raycaster = new THREE.Raycaster();
-    const direction = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
-    raycaster.set(camera.position, direction);
-    const intersects = raycaster.intersectObjects(scene.children, true);
+    // Raycast / hit detection (OPTIMIZED - reuse cached raycaster and direction)
+    cachedDirection.current.set(0, 0, -1).applyQuaternion(camera.quaternion);
+    cachedRaycaster.current.set(camera.position, cachedDirection.current);
+
+    // Use cached shootable objects instead of scene.children
+    const intersects = cachedRaycaster.current.intersectObjects(shootableObjectsRef.current, false);
+
     const validIntersects = intersects.filter((intersect: THREE.Intersection) => {
       const object = intersect.object;
       return (
@@ -234,30 +249,38 @@ setFlashKick((n) => n + 1);
   useFrame((_, delta: number) => {
     if (!gunRef.current || !shouldShow) return;
 
+    // Update shootable objects cache every 120 frames (~2 seconds)
+    if (shootableCacheFrame.current % 120 === 0) {
+      shootableObjectsRef.current = [];
+      scene.traverse((obj) => {
+        const mesh = obj as THREE.Mesh;
+        if (mesh.geometry && mesh.material && mesh.visible &&
+            !(obj as any).isLight && !(obj as any).isCamera &&
+            !obj.userData?.isGhost) {
+          shootableObjectsRef.current.push(obj);
+        }
+      });
+    }
+    shootableCacheFrame.current++;
+
     // Breathing sway
     swayTime.current += delta;
     const swayY = Math.sin(swayTime.current * 2) * 0.01;
 
+    // Base position from camera (reuse cached vector)
+    camera.getWorldPosition(cachedGunPosition.current);
 
-    
-    // Base position from camera
-    const gunPosition = new THREE.Vector3();
-    camera.getWorldPosition(gunPosition);
+    // Reuse cached vectors instead of creating new ones
+    cachedForward.current.set(0, 0, -1).applyQuaternion(camera.quaternion);
+    cachedRight.current.set(1, 0, 0).applyQuaternion(camera.quaternion);
+    cachedDown.current.set(0, -1, 0).applyQuaternion(camera.quaternion);
 
-    const forward = new THREE.Vector3(0, 0, -1);
-    const right = new THREE.Vector3(1, 0, 0);
-    const down = new THREE.Vector3(0, -1, 0);
+    cachedGunPosition.current.add(cachedForward.current.multiplyScalar(0.5));
+    cachedGunPosition.current.add(cachedRight.current.multiplyScalar(0.3));
+    cachedGunPosition.current.add(cachedDown.current.multiplyScalar(0.2 + swayY));
 
-    forward.applyQuaternion(camera.quaternion);
-    right.applyQuaternion(camera.quaternion);
-    down.applyQuaternion(camera.quaternion);
-
-    gunPosition.add(forward.multiplyScalar(0.5));
-    gunPosition.add(right.multiplyScalar(0.3));
-    gunPosition.add(down.multiplyScalar(0.2 + swayY));
-
-    // Recoil offsets
-    let recoilOffset = new THREE.Vector3();
+    // Recoil offsets (reuse cached vector)
+    cachedRecoilOffset.current.set(0, 0, 0);
     let recoilRotation = { x: 0, y: 0, z: 0 };
 
     if (isRecoiling) {
@@ -275,16 +298,20 @@ setFlashKick((n) => n + 1);
       const upward = Math.sin(eased * Math.PI) * maxUpward;
       const rot = Math.sin(eased * Math.PI) * maxRot;
 
-      recoilOffset.add(forward.clone().multiplyScalar(-backward));
-      recoilOffset.add(down.clone().multiplyScalar(-upward));
+      // Reuse forward/down vectors (need to recalculate since they were modified)
+      cachedForward.current.set(0, 0, -1).applyQuaternion(camera.quaternion);
+      cachedDown.current.set(0, -1, 0).applyQuaternion(camera.quaternion);
+
+      cachedRecoilOffset.current.add(cachedForward.current.multiplyScalar(-backward));
+      cachedRecoilOffset.current.add(cachedDown.current.multiplyScalar(-upward));
 
       recoilRotation.x = -rot;
       recoilRotation.z = (Math.random() - 0.5) * 0.1;
     }
 
     // Apply final transform
-    gunPosition.add(recoilOffset);
-    gunRef.current.position.copy(gunPosition);
+    cachedGunPosition.current.add(cachedRecoilOffset.current);
+    gunRef.current.position.copy(cachedGunPosition.current);
 
     gunRef.current.quaternion.copy(camera.quaternion);
     gunRef.current.rotateX(0.1 + recoilRotation.x);

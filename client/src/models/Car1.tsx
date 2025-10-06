@@ -12,6 +12,10 @@ import React from "react";
 import { useGLTF } from "@react-three/drei";
 import { GLTF } from "three-stdlib";
 
+interface GLTFAction extends THREE.AnimationClip {
+  name: string;
+}
+
 type GLTFResult = GLTF & {
   nodes: {
     ["Object006_Material_#294_0"]: THREE.Mesh;

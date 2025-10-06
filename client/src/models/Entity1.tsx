@@ -14,6 +14,10 @@ import { useGraph } from '@react-three/fiber'
 import { useGLTF } from '@react-three/drei'
 import { GLTF, SkeletonUtils } from 'three-stdlib'
 
+interface GLTFAction extends THREE.AnimationClip {
+  name: string;
+}
+
 type GLTFResult = GLTF & {
   nodes: {
     Object_7: THREE.SkinnedMesh

@@ -79,14 +79,14 @@ const eTmp = useRef(new THREE.Euler(0, 0, 0, "YXZ"));
       let found = 0;
       root.traverse((o: any) => {
         if (o?.isMesh || o?.isSkinnedMesh) {
-          o.frustumCulled = false;
+          // o.frustumCulled = false // Disabled - expensive calculation;
           found++;
           const mats = Array.isArray(o.material) ? o.material : [o.material];
           for (const m of mats) {
             if (!m) continue;
             if ("transparent" in m) m.transparent = true;
             if ("depthWrite" in m) m.depthWrite = false;
-            if ("side" in m) m.side = THREE.DoubleSide;
+            // if ("side" in m) m.side = THREE.DoubleSide // Disabled - 2x fragment shader cost
           }
         }
         o.layers?.enable?.(0);

@@ -24,7 +24,7 @@ export function Ghost(props: JSX.IntrinsicElements['group']) {
   useEffect(() => {
     model.traverse((o: any) => {
       if (o?.isMesh || o?.isSkinnedMesh) {
-        o.frustumCulled = false
+        // o.frustumCulled = false // Disabled - expensive calculation
 
         // 🔒 Give this instance its own materials
         if (Array.isArray(o.material)) {
@@ -41,7 +41,7 @@ export function Ghost(props: JSX.IntrinsicElements['group']) {
           if (!m) continue
           if ('transparent' in m) m.transparent = true
           if ('depthWrite' in m) m.depthWrite = false
-          if ('side' in m) m.side = THREE.DoubleSide
+          // DoubleSide disabled (2x fragment shader cost)
         }
       }
     })
