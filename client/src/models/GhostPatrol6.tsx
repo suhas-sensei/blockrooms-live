@@ -31,8 +31,8 @@ export default function GhostPatrol6({
   debug = false,
 
   faceLight = true,
-  faceLightIntensity = 1,
-  faceLightDistance = 6,
+  faceLightIntensity = 0.5,  // Reduced from 1 for performance
+  faceLightDistance = 3,     // Reduced from 6 for performance
   faceOffsetY = 2,
   faceOffsetZ = 0.02,
 

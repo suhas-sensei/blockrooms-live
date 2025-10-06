@@ -116,45 +116,43 @@ useEffect(() => {
 }, []);
 
 
-  // Check for collisions using raycasting
-  const checkCollision = (newPosition: Vector3): boolean => {
-  const raycaster = raycasterRef.current;
+  // Cached collision objects list - only update when scene changes
+  const collisionObjectsRef = useRef<THREE.Object3D[]>([]);
+  const sceneUpdateRef = useRef(0);
 
+  // Check for collisions using raycasting (optimized)
+  const checkCollision = (newPosition: Vector3): boolean => {
+    const raycaster = raycasterRef.current;
+
+    // Update collision objects cache every 60 frames (~1 second at 60fps)
+    if (sceneUpdateRef.current % 60 === 0) {
+      collisionObjectsRef.current = [];
+      scene.traverse((obj) => {
+        const mesh = obj as THREE.Mesh;
+        if (mesh.geometry && mesh.material && mesh.visible &&
+            !(obj as any).isLight && !(obj as any).isCamera &&
+            // Skip small objects and ghosts
+            !obj.userData?.isGhost && !obj.userData?.isEntity) {
+          collisionObjectsRef.current.push(obj);
+        }
+      });
+    }
+    sceneUpdateRef.current++;
+
+    // Reduced to 4 directions instead of 8 for better performance
     const directions = [
       new Vector3(1, 0, 0), // right
       new Vector3(-1, 0, 0), // left
       new Vector3(0, 0, 1), // forward
       new Vector3(0, 0, -1), // backward
-      new Vector3(0.707, 0, 0.707), // diagonal
-      new Vector3(-0.707, 0, 0.707), // diagonal
-      new Vector3(0.707, 0, -0.707), // diagonal
-      new Vector3(-0.707, 0, -0.707), // diagonal
     ];
 
-    // Check collision in multiple directions around the player
+    // Check collision in directions around the player
     for (const direction of directions) {
       raycaster.set(newPosition, direction);
-      const intersects = raycaster.intersectObjects(scene.children, true);
+      const intersects = raycaster.intersectObjects(collisionObjectsRef.current, false);
 
-      // Filter out non-solid objects (lights, cameras, etc.)
-      const solidIntersects = intersects.filter(
-        (intersect: THREE.Intersection) => {
-          const object = intersect.object;
-          // Check if object has geometry and is likely a wall/floor
-          return (
-            (object as THREE.Mesh).geometry &&
-            (object as THREE.Mesh).material &&
-            !(object as THREE.Light).isLight &&
-            !(object as THREE.Camera).isCamera &&
-            object.visible
-          );
-        }
-      );
-
-      if (
-        solidIntersects.length > 0 &&
-        solidIntersects[0].distance < playerRadius
-      ) {
+      if (intersects.length > 0 && intersects[0].distance < playerRadius) {
         return true; // Collision detected
       }
     }
@@ -184,21 +182,29 @@ useEffect(() => {
     // Check if player is moving
     const isMoving = velocity.length() > 0;
     isMovingRef.current = isMoving;
-    
-    // Update store with movement state
-    setMoving(isMoving);
+
+    // Throttle store updates to ~20Hz instead of 60Hz
+    const now = performance.now();
+    const shouldUpdateStore = now - lastPushRef.current > 50;
+
+    if (shouldUpdateStore) {
+      lastPushRef.current = now;
+      setMoving(isMoving);
+    }
 
     if (isMoving) {
       velocity.normalize();
-velocity.multiplyScalar(moveSpeed * delta);
+      velocity.multiplyScalar(moveSpeed * delta);
 
-      
-      // Update store with current velocity
-      setVelocity({
-        x: velocity.x,
-        y: velocity.y,
-        z: velocity.z
-      });
+
+      // Update store with current velocity (throttled)
+      if (shouldUpdateStore) {
+        setVelocity({
+          x: velocity.x,
+          y: velocity.y,
+          z: velocity.z
+        });
+      }
 
       // Calculate new position
       const newPosition = camera.position.clone().add(velocity);
@@ -222,8 +228,10 @@ velocity.multiplyScalar(moveSpeed * delta);
         // If both individual axes are blocked, don't move
       }
     } else {
-      // Update store with zero velocity when not moving
-      setVelocity({ x: 0, y: 0, z: 0 });
+      // Update store with zero velocity when not moving (throttled)
+      if (shouldUpdateStore) {
+        setVelocity({ x: 0, y: 0, z: 0 });
+      }
     }
 
     // Handle running animation (head bob)
@@ -243,8 +251,7 @@ velocity.multiplyScalar(moveSpeed * delta);
 
       // Smooth interpolation back to base height
       if (Math.abs(heightDiff) > 0.001) {
- camera.position.y += heightDiff * delta * 5;
-
+        camera.position.y += heightDiff * delta * 5;
       } else {
         camera.position.y = baseHeight;
       }
@@ -253,16 +260,19 @@ velocity.multiplyScalar(moveSpeed * delta);
       bobTimeRef.current = 0;
     }
 
-    // Update store with current position
-    updatePosition({
-      x: camera.position.x,
-      y: camera.position.y,
-      z: camera.position.z
-    });
-
-    // Update store with current rotation
+    // Get current rotation (always needed for callbacks)
     const rotation = camera.rotation.y;
-    updateRotation(rotation);
+
+    // Update store with current position and rotation (throttled)
+    if (shouldUpdateStore) {
+      updatePosition({
+        x: camera.position.x,
+        y: camera.position.y,
+        z: camera.position.z
+      });
+
+      updateRotation(rotation);
+    }
 
     // Call legacy callbacks for backward compatibility
     if (onPositionUpdate) {

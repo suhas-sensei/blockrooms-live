@@ -33,20 +33,14 @@ export function Shotgun(props: JSX.IntrinsicElements['group']) {
       <group rotation={[-Math.PI / 2, 0, 0]}>
         <group rotation={[Math.PI / 2, 0, 0]}>
           <mesh
-            castShadow
-            receiveShadow
             geometry={nodes.defaultMaterial.geometry}
             material={materials.Metal01}
           />
           <mesh
-            castShadow
-            receiveShadow
             geometry={nodes.defaultMaterial_1.geometry}
             material={materials.Wood_001}
           />
           <mesh
-            castShadow
-            receiveShadow
             geometry={nodes.defaultMaterial_2.geometry}
             material={materials.DarkSteel}
           />
