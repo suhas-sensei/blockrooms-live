@@ -79,6 +79,7 @@ interface AppState {
   rotation: number;
   moving: boolean;
   velocity: { x: number; y: number; z: number };
+  activeWeapon: "pistol" | "shotgun";
 }
 
 // Define actions interface
@@ -150,6 +151,7 @@ interface AppActions {
   updateRotation: (rotation: number) => void;
   setMoving: (moving: boolean) => void;
   setVelocity: (velocity: { x: number; y: number; z: number }) => void;
+  setActiveWeapon: (weapon: "pistol" | "shotgun") => void;
 
   // Utility getters
   canMove: () => boolean;
@@ -291,6 +293,7 @@ const initialState: AppState = {
   rotation: 0,
   moving: false,
   velocity: { x: 0, y: 0, z: 0 },
+  activeWeapon: "pistol",
 };
 
 // Maximum recent events to keep (for performance)
@@ -625,6 +628,7 @@ const useAppStore = create<AppStore>()(
       updateRotation: (rotation) => set({ rotation }),
       setMoving: (moving) => set({ moving }),
       setVelocity: (velocity) => set({ velocity }),
+      setActiveWeapon: (activeWeapon) => set({ activeWeapon }),
 
       // Utility getters
       canMove: () => {

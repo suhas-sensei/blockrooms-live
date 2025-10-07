@@ -23,8 +23,9 @@ const [flashKick, setFlashKick] = React.useState(0);
 
   const { camera, scene } = useThree();
 
-  // Get gun visibility from store
+  // Get gun visibility and active weapon from store
   const { showGun } = useAppStore();
+  const activeWeapon = useAppStore((s: any) => s.activeWeapon ?? "pistol") as "pistol" | "shotgun";
 
   // Use store value, but allow prop override
   const shouldShow = isVisible !== undefined ? isVisible : showGun;
@@ -44,7 +45,12 @@ const [flashKick, setFlashKick] = React.useState(0);
   // Shooting and recoil state
   const [isRecoiling, setIsRecoiling] = useState<boolean>(false);
   const recoilTime = useRef<number>(0);
-  const shootSound = useRef<HTMLAudioElement | null>(null);
+
+  // Sound refs
+  const pistolShootSound = useRef<HTMLAudioElement | null>(null);
+  const shotgunShootSound = useRef<HTMLAudioElement | null>(null);
+  const pistolReloadSound = useRef<HTMLAudioElement | null>(null);
+  const shotgunReloadSound = useRef<HTMLAudioElement | null>(null);
 
   // --- Local ammo state (non-persistent) ---
   const MAG_SIZE = 6;
@@ -107,6 +113,17 @@ const [flashKick, setFlashKick] = React.useState(0);
       popRef.current?.playReloadLong();
     }
 
+    // Play the correct reload sound based on active weapon
+    const currentReloadSound = activeWeapon === "shotgun" ? shotgunReloadSound.current : pistolReloadSound.current;
+    if (currentReloadSound) {
+      try {
+        currentReloadSound.currentTime = 0;
+        currentReloadSound.play();
+      } catch (err) {
+        console.log("Failed to play reload sound:", err);
+      }
+    }
+
     // 2s reload delay with mid-screen spinner
     reloadTimerRef.current = setTimeout(() => {
       setAmmoInMag((mPrev) => {
@@ -145,13 +162,42 @@ const [flashKick, setFlashKick] = React.useState(0);
     };
   }, [isReloading]); // reload uses refs for ammo
 
-  // Load sound and bind click
-  // IMPORTANT: the handler does not make ammo/reload decisions — shoot() does.
+  // Load sounds once on mount
   useEffect(() => {
-    const audio = new Audio("/audio/shot.mp3");
-    audio.volume = 0.7;
-    shootSound.current = audio;
+    console.log("🔊 Loading gun sounds...");
 
+    // Pistol sounds
+    const pistolShoot = new Audio("shot.mp3");
+    pistolShoot.volume = 0.7;
+    pistolShootSound.current = pistolShoot;
+    console.log("✅ Loaded pistol shoot sound:", pistolShoot.src);
+
+    const pistolReload = new Audio("/audio/reloadpistol.mp3");
+    pistolReload.volume = 0.6;
+    pistolReloadSound.current = pistolReload;
+    console.log("✅ Loaded pistol reload sound:", pistolReload.src);
+
+    // Shotgun sounds
+    const shotgunShoot = new Audio("/audio/shot2.mp3");
+    shotgunShoot.volume = 0.8;
+    shotgunShootSound.current = shotgunShoot;
+    console.log("✅ Loaded shotgun shoot sound:", shotgunShoot.src);
+
+    const shotgunReload = new Audio("/audio/shotreloadd.mp3");
+    shotgunReload.volume = 0.6;
+    shotgunReloadSound.current = shotgunReload;
+    console.log("✅ Loaded shotgun reload sound:", shotgunReload.src);
+
+    return () => {
+      pistolShootSound.current = null;
+      shotgunShootSound.current = null;
+      pistolReloadSound.current = null;
+      shotgunReloadSound.current = null;
+    };
+  }, []);
+
+  // Handle mouse click for shooting
+  useEffect(() => {
     const handleMouseClick = (event: MouseEvent) => {
       if (event.button !== 0) return;
       if (!shouldShow || !canShoot) return;
@@ -162,13 +208,14 @@ const [flashKick, setFlashKick] = React.useState(0);
     document.addEventListener("mousedown", handleMouseClick);
     return () => {
       document.removeEventListener("mousedown", handleMouseClick);
-      shootSound.current = null;
     };
   }, [shouldShow, canShoot, isReloading]);
 
   const shoot = (): void => {
+    console.log("🎯 shoot() called - canShoot:", canShoot, "isRecoiling:", isRecoiling, "isReloading:", isReloading);
     if (!canShoot || isRecoiling || isReloading) return;
 
+    console.log("💥 Firing! Ammo in mag:", ammoMagRef.current);
     // If mag is empty, either trigger long reload (if reserve) or do nothing
     if (ammoMagRef.current <= 0) {
       if (ammoReserveRef.current > 0 && !isReloading) reload("long");
@@ -186,14 +233,21 @@ const [flashKick, setFlashKick] = React.useState(0);
       return next;
     });
 
-    // Sound only when a shot actually happened
-    if (shootSound.current) {
+    // Play the correct shoot sound based on active weapon
+    const currentShootSound = activeWeapon === "shotgun" ? shotgunShootSound.current : pistolShootSound.current;
+    console.log("🔫 Shooting with weapon:", activeWeapon, "Sound ref:", currentShootSound);
+    if (currentShootSound) {
       try {
-        shootSound.current.currentTime = 0;
-        shootSound.current.play();
+        currentShootSound.currentTime = 0;
+        const playPromise = currentShootSound.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(err => console.log("Failed to play shoot sound:", err));
+        }
       } catch (err) {
         console.log("Failed to play shoot sound:", err);
       }
+    } else {
+      console.log("❌ No sound ref available for", activeWeapon);
     }
 
     // Kick the model's shoot animation

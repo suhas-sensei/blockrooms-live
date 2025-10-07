@@ -443,6 +443,12 @@ const App = (): JSX.Element => {
     // Pickup prompt screen positions
     const [pickupScreenPositions, setPickupScreenPositions] = useState<PickupScreenPos[]>([]);
 
+    // Door prompt visibility
+    const [showDoorPrompt, setShowDoorPrompt] = useState(false);
+
+    // Shard prompt visibility
+    const [showShardPrompt2, setShowShardPrompt2] = useState(false);
+
     useEffect(() => {
   window.dispatchEvent(new CustomEvent("hud:weapon", { detail: { weapon: activeWeapon } }));
 }, [activeWeapon]);
@@ -1560,6 +1566,17 @@ if (event.key.toLowerCase() === "b") {
   useEffect(() => {
     // Intentionally no-op (no auto-close)
   }, [playerPosition, isAtDoorPosition, doorOpened, door2Opened]);
+
+  // Update door prompt visibility when player moves
+  useEffect(() => {
+    const doorCheck = isAtDoorPosition();
+    setShowDoorPrompt(doorCheck.atAnyDoor);
+  }, [playerPosition, isAtDoorPosition]);
+
+  // Update shard prompt visibility
+  useEffect(() => {
+    setShowShardPrompt2(shardPanelEnabled);
+  }, [shardPanelEnabled]);
   // After exiting a room, poll a few times so HUD (Current Room) updates
   const refreshRoomAfterExit = useCallback(
     async (prevRoomId: string) => {
@@ -1818,78 +1835,17 @@ if (event.key.toLowerCase() === "b") {
       />
 
 
-  {/* Door Entry Panel */}
-<div
-  style={{
-    position: "fixed",
-    bottom: "20px",
-    left: "20px",
-    zIndex: 3000,
-    backgroundColor: ePressed ? "rgba(255, 255, 255, 0.9)" : "rgba(0, 0, 0, 0.9)",
-    border: `2px solid ${doorCheck.atAnyDoor ? "#E1CF48" : "#666"}`,
-    borderRadius: "8px",
-    padding: "20px",
-    color: ePressed ? "black" : "white",
-    fontFamily: "monospace",
-    minWidth: "300px",
-    textAlign: "center",
-    opacity: doorCheck.atAnyDoor ? 1 : 0.5,
-  }}
->
-  <div
-    style={{
-      fontSize: "18px",
-      fontWeight: "bold",
-      color: doorCheck.atAnyDoor
-        ? (ePressed ? "black" : "#E1CF48")
-        : (ePressed ? "black" : "#666"),
-    }}
-  >
-    Press E to Open Door
-  </div>
-</div>
+  {/* Door Entry Prompt - CSGO style at center */}
+  {showDoorPrompt && (
+    <PickupPrompt
+      x={window.innerWidth / 2}
+      y={window.innerHeight / 2}
+      message="Open Door"
+      keyPrompt="E"
+    />
+  )}
 
 
-      {/* Shooting Panel */}
-      
-      <div
-        style={{
-          position: "fixed",
-          bottom: "20px",
-          right: "20px",
-          zIndex: 3000,
-          backgroundColor: fPressed
-            ? "rgba(255, 255, 255, 0.9)"
-            : "rgba(0, 0, 0, 0.9)",
-          border: shootPanelEnabled ? "2px solid #ff4444" : "2px solid #555",
-          borderRadius: "8px",
-          padding: "20px",
-          color: fPressed ? "black" : "white",
-          fontFamily: "monospace",
-          minWidth: "300px",
-          textAlign: "center",
-          opacity: shootPanelEnabled ? 1 : 0.45,
-          pointerEvents: "none", // purely visual panel; avoid accidental hovers/clicks
-        }}
-      >
-        <div style={{ fontSize: "18px", fontWeight: "bold" }}>
-          {activeWeapon === "shotgun"
-            ? "Left-click to Shoot Enemy (shotgun)"
-            : "Switch to Shotgun (2) to damage enemy"}
-        </div>
-
-        {doorCheck.atAnyDoor && (
-          <div style={{ marginTop: "8px", fontSize: "14px", color: "#ff6666" }}>
-            {(doorCheck.atDoor1 || doorCheck.atDoor2) && "Targeting Room 1"}
-            {(doorCheck.atDoor3 || doorCheck.atDoor4) && "Targeting Room 2"}
-            {(doorCheck.atDoor5 || doorCheck.atDoor6) && "Targeting Room 3"}
-            {doorCheck.atDoor7 && "Targeting Room 4"}
-            {(doorCheck.atDoor8 || doorCheck.atDoor9) && "Targeting Room 5"}
-            {(doorCheck.atDoor10 || doorCheck.atDoor11) && "Targeting Room 6"}
-            {(doorCheck.atDoor12 || doorCheck.atDoor13) && "Targeting Room 7"}
-          </div>
-        )}
-      </div>
 
       {/* Centered reload spinner */}
       {isReloadingHud && (
@@ -1903,110 +1859,25 @@ if (event.key.toLowerCase() === "b") {
         </>
       )}
 
-      {/* Shard Panel */}
-      <div
-        style={{
-          position: "fixed",
-          bottom: "120px",
-          right: "20px",
-          zIndex: 3000,
-          backgroundColor: xPressed
-            ? "rgba(255, 255, 255, 0.9)"
-            : "rgba(0, 0, 0, 0.9)",
-          border: shardPanelEnabled ? "2px solid #44ff44" : "2px solid #555",
-          borderRadius: "8px",
-          padding: "20px",
-          color: xPressed ? "black" : "white",
-          fontFamily: "monospace",
-          minWidth: "300px",
-          textAlign: "center",
-          opacity: shardPanelEnabled ? 1 : 0.45,
-          pointerEvents: "none", 
-        }}
-      >
-        <div style={{ fontSize: "18px", fontWeight: "bold" }}>
-          Press X to Collect Shard
-        </div>
-        {doorCheck.atAnyDoor && (
-          <div style={{ marginTop: "8px", fontSize: "14px", color: "#66ff66" }}>
-            {(doorCheck.atDoor1 || doorCheck.atDoor2) && "Targeting Room 1"}
-            {(doorCheck.atDoor3 || doorCheck.atDoor4) && "Targeting Room 2"}
-          </div>
-        )}
-      </div>
-  {
-  <div
-    style={{
-      position: "fixed",
-      bottom: "320px",
-      right: "20px",
-      zIndex: 3000,
-      backgroundColor: bPressed
-        ? "rgba(255, 255, 255, 0.9)"
-        : "rgba(0, 0, 0, 0.9)",
-      border: canEndGame ? "2px solid #44ff44" : "2px solid #555",
-      borderRadius: "8px",
-      padding: "20px",
-      color: bPressed ? "black" : "white",
-      fontFamily: "monospace",
-      minWidth: "300px",
-      textAlign: "center",
-      opacity: canEndGame ? 1 : 0.45,
-      pointerEvents: "none", // visual panel only
-    }}
-  >
-    {/* Pickup prompts at center of screen */}
-    {pickupScreenPositions.length > 0 && pickupScreenPositions[0].isVisible && (
-      <PickupPrompt
-        x={window.innerWidth / 2}
-        y={window.innerHeight / 2}
-        message={pickupScreenPositions[0].message}
-        keyPrompt="T"
-      />
-    )}
+      {/* Shard Collection Prompt - CSGO style at center */}
+      {showShardPrompt2 && (
+        <PickupPrompt
+          x={window.innerWidth / 2}
+          y={window.innerHeight / 2}
+          message="Collect Shard"
+          keyPrompt="X"
+        />
+      )}
 
-    <div style={{ fontSize: "18px", fontWeight: "bold" }}>
-      {canEndGame ? "Press B to End Game" : "End Game disabled while inside room"}
-    </div>
-  </div>
-}
-
-
-      {/* Exit Panel */}
-      <div
-        style={{
-          position: "fixed",
-          bottom: "220px",
-          right: "20px",
-          zIndex: 3000,
-          backgroundColor: qPressed
-            ? "rgba(255, 255, 255, 0.9)"
-            : "rgba(0, 0, 0, 0.9)",
-          border: exitPanelEnabled ? "2px solid #ff8844" : "2px solid #555",
-          borderRadius: "8px",
-          padding: "20px",
-          color: qPressed ? "black" : "white",
-          fontFamily: "monospace",
-          minWidth: "300px",
-          textAlign: "center",
-          opacity: exitPanelEnabled ? 1 : 0.45,
-          pointerEvents: "none", // purely visual panel
-        }}
-      >
-        <div style={{ fontSize: "18px", fontWeight: "bold" }}>
-          Press Q to Exit Game
-        </div>
-        {doorCheck.atAnyDoor && (
-          <div style={{ marginTop: "8px", fontSize: "14px", color: "#ff8866" }}>
-            {(doorCheck.atDoor1 || doorCheck.atDoor2) && "Exiting Room 1"}
-            {(doorCheck.atDoor3 || doorCheck.atDoor4) && "Exiting Room 2"}
-            {(doorCheck.atDoor5 || doorCheck.atDoor6) && "Exiting Room 3"}
-            {(doorCheck.atDoor8 || doorCheck.atDoor9) && "Exiting Room 5"}
-            {(doorCheck.atDoor10 || doorCheck.atDoor11) && "Exiting Room 6"}
-            {(doorCheck.atDoor12 || doorCheck.atDoor13) && "Exiting Room 7"}
-          </div>
-        )}
-      </div>
+      {/* Pickup prompts at center of screen */}
+      {pickupScreenPositions.length > 0 && pickupScreenPositions[0].isVisible && (
+        <PickupPrompt
+          x={window.innerWidth / 2}
+          y={window.innerHeight / 2}
+          message={pickupScreenPositions[0].message}
+          keyPrompt="T"
+        />
+      )}
 
       {/* On-screen prompts */}
       {showShootPrompt && (
