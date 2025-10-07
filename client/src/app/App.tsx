@@ -476,6 +476,7 @@ const shotgunReloadSfxRef = useRef<HTMLAudioElement | null>(null);
 
 const playShot = () => playSfx(shotSfxRef, "/audio/shot2.mp3");
 const playPistolReload = () => playSfx(pistolReloadSfxRef, "/audio/shotreload.mp3");
+const playShotgunReload = () => playSfx(shotgunReloadSfxRef, "shotreloadd.mp3");
 
   // Create a base <audio>, then clone per play so rapid shots can overlap
   const ensureSfx = (
@@ -2458,7 +2459,3 @@ shadow-mapSize-height={2048}
 };
 
 export default App;
-function playShotgunReload() {
-  throw new Error("Function not implemented.");
-}
-
