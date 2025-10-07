@@ -10,7 +10,7 @@ export const NETWORKS: Record<NetworkType, NetworkConfig> = {
   mainnet: {
     deployType: 'mainnet',
     nodeUrl: 'https://api.cartridge.gg/x/starknet/mainnet',
-    toriiUrl: 'https://api.cartridge.gg/x/blockrooms-main/torii',
+    toriiUrl: 'https://api.cartridge.gg/x/blockrooms-torii/torii',
   },
   sepolia: {
     deployType: 'sepolia',

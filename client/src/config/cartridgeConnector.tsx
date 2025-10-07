@@ -3,15 +3,36 @@ import { ControllerConnector } from "@cartridge/connector";
 import { ControllerOptions } from "@cartridge/controller";
 import { constants } from "starknet";
 import { manifest } from "./manifest";
-import { getStoredNetwork, getCurrentNetworkConfig } from "./networkConfig";
+import { getStoredNetwork } from "./networkConfig";
 
-// Get the current network from localStorage
-const currentNetwork = getStoredNetwork();
-const networkConfig = getCurrentNetworkConfig();
+// Determine network: env variable takes priority, then localStorage
+const getNetwork = () => {
+  // Check if env variables are set (for mainnet .env file)
+  const envDeployType = import.meta.env.VITE_PUBLIC_DEPLOY_TYPE;
+  const envNodeUrl = import.meta.env.VITE_PUBLIC_NODE_URL;
 
-console.log("Current Network:", currentNetwork);
+  if (envDeployType && envNodeUrl) {
+    console.log("CartridgeConnector: Using env-based network:", envDeployType);
+    return envDeployType;
+  }
+
+  // Otherwise use localStorage (for button switching)
+  const storedNetwork = getStoredNetwork();
+  console.log("CartridgeConnector: Using localStorage network:", storedNetwork);
+  return storedNetwork;
+};
+
+const currentNetwork = getNetwork();
 
 const getRpcUrl = () => {
+  // If env has explicit NODE_URL, use that
+  const envNodeUrl = import.meta.env.VITE_PUBLIC_NODE_URL;
+  if (envNodeUrl) {
+    console.log("CartridgeConnector: Using env NODE_URL:", envNodeUrl);
+    return envNodeUrl;
+  }
+
+  // Otherwise use default URLs
   switch (currentNetwork) {
     case "mainnet":
         return "https://api.cartridge.gg/x/starknet/mainnet";

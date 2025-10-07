@@ -13,14 +13,29 @@ const manifests = {
   sepolia
 };
 
-// Get deployment type from localStorage or fallback to sepolia
+// Get deployment type: env variable takes priority, then localStorage, then default to sepolia
 const getDeployType = (): DeployType => {
+  // Check if env variable is set (for mainnet .env file)
+  const envDeployType = import.meta.env.VITE_PUBLIC_DEPLOY_TYPE;
+  const envNodeUrl = import.meta.env.VITE_PUBLIC_NODE_URL;
+
+  if (envDeployType && envNodeUrl) {
+    console.log('Manifest: Using env-based deployment:', envDeployType);
+    if (envDeployType === 'mainnet' || envDeployType === 'sepolia') {
+      return envDeployType;
+    }
+  }
+
+  // Otherwise check localStorage (for button switching)
   if (typeof window !== 'undefined' && window.localStorage) {
     const stored = localStorage.getItem('selected_network');
     if (stored === 'mainnet' || stored === 'sepolia') {
+      console.log('Manifest: Using localStorage deployment:', stored);
       return stored;
     }
   }
+
+  console.log('Manifest: Using default deployment: sepolia');
   return 'sepolia';
 };
 
