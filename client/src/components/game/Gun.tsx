@@ -161,7 +161,7 @@ const [flashKick, setFlashKick] = React.useState(0);
   // Load sound and bind click
   // IMPORTANT: the handler does not make ammo/reload decisions — shoot() does.
   useEffect(() => {
-    const audio = new Audio("/audio/shot.mp3");
+    const audio = new Audio("shot.mp3");
     audio.volume = 0.7;
     shootSound.current = audio;
 
@@ -246,11 +246,21 @@ setFlashKick((n) => n + 1);
     setTimeout(() => setIsRecoiling(false), 200);
   };
 
+  // Throttle gun updates when player is moving for 2-3x FPS boost
+  const gunUpdateCounter = useRef(0);
+  const { moving } = useAppStore();
+
   useFrame((_, delta: number) => {
     if (!gunRef.current || !shouldShow) return;
 
-    // Update shootable objects cache every 120 frames (~2 seconds)
-    if (shootableCacheFrame.current % 120 === 0) {
+    // Skip gun position updates every other frame when moving (30fps instead of 60fps)
+    gunUpdateCounter.current++;
+    if (moving && gunUpdateCounter.current % 2 !== 0) {
+      return; // Skip this frame
+    }
+
+    // Update shootable objects cache every 240 frames (~4 seconds)
+    if (shootableCacheFrame.current % 240 === 0) {
       shootableObjectsRef.current = [];
       scene.traverse((obj) => {
         const mesh = obj as THREE.Mesh;
@@ -263,9 +273,9 @@ setFlashKick((n) => n + 1);
     }
     shootableCacheFrame.current++;
 
-    // Breathing sway
+    // Breathing sway (reduced when moving for performance)
     swayTime.current += delta;
-    const swayY = Math.sin(swayTime.current * 2) * 0.01;
+    const swayY = moving ? 0 : Math.sin(swayTime.current * 2) * 0.01;
 
     // Base position from camera (reuse cached vector)
     camera.getWorldPosition(cachedGunPosition.current);

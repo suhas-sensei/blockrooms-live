@@ -87,7 +87,7 @@ function playOnce(action?: THREE.AnimationAction) {
 
 const Pop = forwardRef<PopHandle, Props>(function Pop({ segments, clipNames, ...props }, ref) {
   const group = useRef<THREE.Group>(null);
-  const { nodes, materials, animations } = useGLTF("/gun1.glb") as GLTFResult;
+  const { nodes, materials, animations } = useGLTF("/gun1-transformed.glb") as GLTFResult;
   const { actions, mixer } = useAnimations(animations, group);
 
   // Wait until the <group> ref is attached so mixer has a valid root
@@ -191,7 +191,7 @@ const Pop = forwardRef<PopHandle, Props>(function Pop({ segments, clipNames, ...
   }));
 
   return (
-    <group ref={group} {...props} dispose={null}>
+    <group ref={group} {...props} dispose={null} frustumCulled={false}>
       <group name="Sketchfab_Scene">
         <group name="Sketchfab_model" rotation={[-Math.PI / 2, 0, 0]}>
           <group name="105d2810571c4501ba07ac55c5582245fbx" rotation={[Math.PI / 2, 0, 0]} scale={0.01}>
@@ -205,44 +205,46 @@ const Pop = forwardRef<PopHandle, Props>(function Pop({ segments, clipNames, ...
                       geometry={nodes.Object_83.geometry}
                       material={materials.arms}
                       skeleton={nodes.Object_83.skeleton}
+                      castShadow={false}
+                      receiveShadow={false}
                     />
                     <group name="pistol" position={[0, -12.318, 25.913]}>
                       <group name="base">
-                        <mesh name="base_beretta_0" castShadow receiveShadow geometry={nodes.base_beretta_0.geometry} material={materials.beretta} />
+                        <mesh name="base_beretta_0" castShadow={false} receiveShadow={false} geometry={nodes.base_beretta_0.geometry} material={materials.beretta} />
                       </group>
                       <group name="stopper" position={[1.26, 5.502, 5.615]}>
-                        <mesh name="stopper_beretta_0" castShadow receiveShadow geometry={nodes.stopper_beretta_0.geometry} material={materials.beretta} />
+                        <mesh name="stopper_beretta_0" castShadow={false} receiveShadow={false} geometry={nodes.stopper_beretta_0.geometry} material={materials.beretta} />
                       </group>
                       <group name="shell_1" position={[0, 7.849, 6.937]}>
-                        <mesh name="shell_1_beretta_0" castShadow receiveShadow geometry={nodes.shell_1_beretta_0.geometry} material={materials.beretta} />
+                        <mesh name="shell_1_beretta_0" castShadow={false} receiveShadow={false} geometry={nodes.shell_1_beretta_0.geometry} material={materials.beretta} />
                         <group name="bullet_2" position={[0, 0, 0.935]}>
-                          <mesh name="bullet_2_beretta_0" castShadow receiveShadow geometry={nodes.bullet_2_beretta_0.geometry} material={materials.beretta} />
+                          <mesh name="bullet_2_beretta_0" castShadow={false} receiveShadow={false} geometry={nodes.bullet_2_beretta_0.geometry} material={materials.beretta} />
                         </group>
                       </group>
                       <group name="mag" position={[0, -0.379, 0.406]} rotation={[0.262, 0, 0]}>
-                        <mesh name="mag_beretta_0" castShadow receiveShadow geometry={nodes.mag_beretta_0.geometry} material={materials.beretta} />
+                        <mesh name="mag_beretta_0" castShadow={false} receiveShadow={false} geometry={nodes.mag_beretta_0.geometry} material={materials.beretta} />
                         <group name="shell" position={[0, 7.4, -0.455]} rotation={[-0.262, 0, 0]}>
-                          <mesh name="shell_beretta_0" castShadow receiveShadow geometry={nodes.shell_beretta_0.geometry} material={materials.beretta} />
+                          <mesh name="shell_beretta_0" castShadow={false} receiveShadow={false} geometry={nodes.shell_beretta_0.geometry} material={materials.beretta} />
                           <group name="bullet_2_2" position={[0, 0, 0.935]}>
-                            <mesh name="bullet_2_2_beretta_0" castShadow receiveShadow geometry={nodes.bullet_2_2_beretta_0.geometry} material={materials.beretta} />
+                            <mesh name="bullet_2_2_beretta_0" castShadow={false} receiveShadow={false} geometry={nodes.bullet_2_2_beretta_0.geometry} material={materials.beretta} />
                           </group>
                         </group>
                         <group name="shell_1_2" position={[0, 6.293, -0.158]} rotation={[-0.262, 0, 0]}>
-                          <mesh name="shell_1_2_beretta_0" castShadow receiveShadow geometry={nodes.shell_1_2_beretta_0.geometry} material={materials.beretta} />
+                          <mesh name="shell_1_2_beretta_0" castShadow={false} receiveShadow={false} geometry={nodes.shell_1_2_beretta_0.geometry} material={materials.beretta} />
                           <group name="bullet" position={[0, 0, 0.935]}>
-                            <mesh name="bullet_beretta_0" castShadow receiveShadow geometry={nodes.bullet_beretta_0.geometry} material={materials.beretta} />
+                            <mesh name="bullet_beretta_0" castShadow={false} receiveShadow={false} geometry={nodes.bullet_beretta_0.geometry} material={materials.beretta} />
                           </group>
                         </group>
                       </group>
                       <group name="hammer" position={[0, 5.573, -1.608]} rotation={[-1.242, 0, 0]}>
-                        <mesh name="hammer_beretta_0" castShadow receiveShadow geometry={nodes.hammer_beretta_0.geometry} material={materials.beretta} />
+                        <mesh name="hammer_beretta_0" castShadow={false} receiveShadow={false} geometry={nodes.hammer_beretta_0.geometry} material={materials.beretta} />
                       </group>
 
                       <group name="trigger" position={[0, 4.404, 6.033]}>
-                        <mesh name="trigger_beretta_0" castShadow receiveShadow geometry={nodes.trigger_beretta_0.geometry} material={materials.beretta} />
+                        <mesh name="trigger_beretta_0" castShadow={false} receiveShadow={false} geometry={nodes.trigger_beretta_0.geometry} material={materials.beretta} />
                       </group>
                       <group name="slide" position={[0, 7.341, 3.872]}>
-                        <mesh name="slide_beretta_0" castShadow receiveShadow geometry={nodes.slide_beretta_0.geometry} material={materials.beretta} />
+                        <mesh name="slide_beretta_0" castShadow={false} receiveShadow={false} geometry={nodes.slide_beretta_0.geometry} material={materials.beretta} />
                       </group>
                     </group>
                     <group name="Object_82" position={[0, 3.036, -1.334]} />
@@ -260,4 +262,4 @@ const Pop = forwardRef<PopHandle, Props>(function Pop({ segments, clipNames, ...
 
 export default Pop;
 
-useGLTF.preload("/gun1.glb");
+useGLTF.preload("/gun1-transformed.glb");

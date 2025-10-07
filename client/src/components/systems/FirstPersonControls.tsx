@@ -119,15 +119,18 @@ useEffect(() => {
   // Cached collision objects list - only update when scene changes
   const collisionObjectsRef = useRef<THREE.Object3D[]>([]);
   const sceneUpdateRef = useRef(0);
-  const lastCollisionCheckTime = useRef(0);
-  const lastCollisionResult = useRef<{ pos: Vector3; result: boolean } | null>(null);
 
-  // Check for collisions using raycasting (optimized but accurate)
+  // Pre-allocated direction vectors - reuse instead of creating 4 new Vector3s per frame
+  const dirRight = useRef(new Vector3(1, 0, 0));
+  const dirLeft = useRef(new Vector3(-1, 0, 0));
+  const dirForward = useRef(new Vector3(0, 0, 1));
+  const dirBackward = useRef(new Vector3(0, 0, -1));
+
+  // Check for collisions using raycasting (optimized with zero allocations)
   const checkCollision = (newPosition: Vector3): boolean => {
     const raycaster = raycasterRef.current;
 
     // Update collision objects cache every 180 frames (~3 seconds at 60fps)
-    // Further reduced for performance
     if (sceneUpdateRef.current % 180 === 0) {
       collisionObjectsRef.current = [];
       scene.traverse((obj) => {
@@ -142,22 +145,25 @@ useEffect(() => {
     }
     sceneUpdateRef.current++;
 
-    // Check 4 cardinal directions - necessary for accurate collision
-    const directions = [
-      new Vector3(1, 0, 0),   // right
-      new Vector3(-1, 0, 0),  // left
-      new Vector3(0, 0, 1),   // forward
-      new Vector3(0, 0, -1),  // backward
-    ];
+    // Check 4 cardinal directions using pre-allocated vectors (zero allocations)
+    raycaster.set(newPosition, dirRight.current);
+    if (raycaster.intersectObjects(collisionObjectsRef.current, false)[0]?.distance < playerRadius) {
+      return true;
+    }
 
-    // Check collision in all directions
-    for (const direction of directions) {
-      raycaster.set(newPosition, direction);
-      const intersects = raycaster.intersectObjects(collisionObjectsRef.current, false);
+    raycaster.set(newPosition, dirLeft.current);
+    if (raycaster.intersectObjects(collisionObjectsRef.current, false)[0]?.distance < playerRadius) {
+      return true;
+    }
 
-      if (intersects.length > 0 && intersects[0].distance < playerRadius) {
-        return true; // Collision detected
-      }
+    raycaster.set(newPosition, dirForward.current);
+    if (raycaster.intersectObjects(collisionObjectsRef.current, false)[0]?.distance < playerRadius) {
+      return true;
+    }
+
+    raycaster.set(newPosition, dirBackward.current);
+    if (raycaster.intersectObjects(collisionObjectsRef.current, false)[0]?.distance < playerRadius) {
+      return true;
     }
 
     return false; // No collision
