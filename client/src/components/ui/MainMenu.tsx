@@ -190,6 +190,36 @@ const pollRefetchUntilInactive = async (
   const [showTutorial, setShowTutorial] = useState(false);
     const [hovered, setHovered] = useState<number | null>(null);
 
+  // Tutorial flow states
+  const [showBlackScreen, setShowBlackScreen] = useState(false);
+  const [showTutorialVideo, setShowTutorialVideo] = useState(false);
+
+  // Handle tutorial sequence: black screen (4s) -> video -> game
+  useEffect(() => {
+    if (showBlackScreen) {
+      const timer = setTimeout(() => {
+        setShowBlackScreen(false);
+        setShowTutorialVideo(true);
+      }, 4000); // 4 seconds
+      return () => clearTimeout(timer);
+    }
+  }, [showBlackScreen]);
+
+  // Handle ESC key to skip tutorial
+  useEffect(() => {
+    if (!showBlackScreen && !showTutorialVideo) return;
+
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape" || e.code === "Escape") {
+        setShowBlackScreen(false);
+        setShowTutorialVideo(false);
+        startGameUI();
+      }
+    };
+
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [showBlackScreen, showTutorialVideo, startGameUI]);
 
   useEffect(() => {
     setConnectionStatus(
@@ -234,7 +264,7 @@ const handleStartOrEnterGame = async (): Promise<void> => {
   // Stop menu music before entering the rooms
   stopBgmWithFade(700);
 
-  // If a previous session is still active, end it first (backend “Press B”)
+  // If a previous session is still active, end it first (backend "Press B")
   if (gameAlreadyActive && canEndGame) {
     try {
       await endGame();
@@ -263,8 +293,8 @@ const handleStartOrEnterGame = async (): Promise<void> => {
     }
   }
 
-  // Enter the 3D scene
-  startGameUI();
+  // Start tutorial sequence: black screen -> video -> game
+  setShowBlackScreen(true);
 };
 
 
@@ -427,6 +457,49 @@ const handleStartOrEnterGame = async (): Promise<void> => {
         <TutorialVideo
           onEnded={() => {
             setShowTutorial(false);
+            // Now reveal the game UI
+            startGameUI();
+          }}
+        />
+      )}
+
+      {/* Black screen overlay (4 seconds) */}
+      {showBlackScreen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "black",
+            zIndex: 9999,
+          }}
+        >
+          <style>{`
+            @keyframes blink {
+              0%, 100% { opacity: 1; }
+              50% { opacity: 0.3; }
+            }
+          `}</style>
+          <div
+            style={{
+              position: "absolute",
+              bottom: "40px",
+              left: "40px",
+              color: "white",
+              fontFamily: "monospace",
+              fontSize: "18px",
+              animation: "blink 1.5s ease-in-out infinite",
+            }}
+          >
+            loading...
+          </div>
+        </div>
+      )}
+
+      {/* Tutorial video after black screen */}
+      {showTutorialVideo && (
+        <TutorialVideo
+          onEnded={() => {
+            setShowTutorialVideo(false);
             // Now reveal the game UI
             startGameUI();
           }}
