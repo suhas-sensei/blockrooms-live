@@ -31,6 +31,29 @@ const trigger = (muzzleFlashTrigger ?? 0) + flashKick;
 const showGunStore = useAppStore((s) => s.showGun);
 const shouldShow = isVisible ?? showGunStore;
 
+  // --- Sound refs ---
+  const shootSound = useRef<HTMLAudioElement | null>(null);
+  const reloadSound = useRef<HTMLAudioElement | null>(null);
+
+  // --- Load sounds on mount ---
+  useEffect(() => {
+    console.log("🔊 Loading shotgun sounds...");
+    const shoot = new Audio("shot2.mp3");
+    shoot.volume = 0.8;
+    shootSound.current = shoot;
+    console.log("✅ Loaded shotgun shoot sound:", shoot.src);
+
+    const reload = new Audio("shotreloadd.mp3");
+    reload.volume = 0.6;
+    reloadSound.current = reload;
+    console.log("✅ Loaded shotgun reload sound:", reload.src);
+
+    return () => {
+      shootSound.current = null;
+      reloadSound.current = null;
+    };
+  }, []);
+
   // --- load animated rig (hands + shotgun) ---
   const gltf = useGLTF("/shotgunshoot.glb");
   const { actions, mixer } = useAnimations(gltf.animations, group) as { actions: Partial<GLTFActions>; mixer?: THREE.AnimationMixer };
@@ -127,6 +150,25 @@ const shouldShow = isVisible ?? showGunStore;
       setMag(m => Math.max(0, m - 1));
       playShot();
 
+      // Play shotgun shoot sound
+      console.log("🔫 Shotgun firing! Sound ref:", shootSound.current);
+      if (shootSound.current) {
+        try {
+          shootSound.current.currentTime = 0;
+          const playPromise = shootSound.current.play();
+          console.log("▶️ Playing shotgun shoot sound, promise:", playPromise);
+          if (playPromise !== undefined) {
+            playPromise
+              .then(() => console.log("✅ Shotgun shoot sound played successfully"))
+              .catch(err => console.log("❌ Failed to play shotgun shoot sound:", err));
+          }
+        } catch (err) {
+          console.log("❌ Failed to play shotgun shoot sound:", err);
+        }
+      } else {
+        console.log("❌ No shootSound ref available!");
+      }
+
       // raycast
       ray.setFromCamera(center, camera);
       const hits = ray.intersectObjects(scene.children, true);
@@ -149,6 +191,20 @@ setFlashKick((n) => n + 1);
     if (resRef.current <= 0) return;
 
     setReloading(true);
+
+    // Play shotgun reload sound
+    if (reloadSound.current) {
+      try {
+        reloadSound.current.currentTime = 0;
+        const playPromise = reloadSound.current.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(err => console.log("Failed to play shotgun reload sound:", err));
+        }
+      } catch (err) {
+        console.log("Failed to play shotgun reload sound:", err);
+      }
+    }
+
     playReload(() => {
       const need = MAG_SIZE - magRef.current;
       const take = Math.min(need, resRef.current);

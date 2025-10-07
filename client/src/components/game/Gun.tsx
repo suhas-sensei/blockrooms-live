@@ -172,18 +172,18 @@ const [flashKick, setFlashKick] = React.useState(0);
     pistolShootSound.current = pistolShoot;
     console.log("✅ Loaded pistol shoot sound:", pistolShoot.src);
 
-    const pistolReload = new Audio("/audio/reloadpistol.mp3");
+    const pistolReload = new Audio("reloadpistol.mp3");
     pistolReload.volume = 0.6;
     pistolReloadSound.current = pistolReload;
     console.log("✅ Loaded pistol reload sound:", pistolReload.src);
 
     // Shotgun sounds
-    const shotgunShoot = new Audio("/audio/shot2.mp3");
+    const shotgunShoot = new Audio("shot2.mp3");
     shotgunShoot.volume = 0.8;
     shotgunShootSound.current = shotgunShoot;
     console.log("✅ Loaded shotgun shoot sound:", shotgunShoot.src);
 
-    const shotgunReload = new Audio("/audio/shotreloadd.mp3");
+    const shotgunReload = new Audio("shotreloadd.mp3");
     shotgunReload.volume = 0.6;
     shotgunReloadSound.current = shotgunReload;
     console.log("✅ Loaded shotgun reload sound:", shotgunReload.src);
