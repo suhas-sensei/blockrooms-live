@@ -34,8 +34,7 @@ The logic of the game lives entirely on-chain, built using the **Dojo Engine**:
 - 📡 **Torii** – for event indexing and real-time subscriptions to in-game events.
 
 👉 **Explore Dojo documentation:** [https://docs.dojoengine.org](https://docs.dojoengine.org)
-
----
+efwef
 
 
 ## 🔗 Relevant Links
