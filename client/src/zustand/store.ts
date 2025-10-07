@@ -52,6 +52,7 @@ interface AppState {
   lastTransaction: string | null;
   actionInProgress: boolean;
   connectionStatus: "connected" | "connecting" | "disconnected";
+  selectedNetwork: "sepolia" | "mainnet" | null;
 
   // Game statistics (derived from player data)
   gameStats: {
@@ -132,6 +133,7 @@ interface AppActions {
   setConnectionStatus: (
     status: "connected" | "connecting" | "disconnected"
   ) => void;
+  setSelectedNetwork: (network: "sepolia" | "mainnet" | null) => void;
 
   // Game lifecycle
   initializeGame: () => void;
@@ -266,6 +268,7 @@ const initialState: AppState = {
   lastTransaction: null,
   actionInProgress: false,
   connectionStatus: "disconnected",
+  selectedNetwork: null,
 
   // Stats
   gameStats: {
@@ -545,6 +548,7 @@ const useAppStore = create<AppStore>()(
       setLastTransaction: (lastTransaction) => set({ lastTransaction }),
       setActionInProgress: (actionInProgress) => set({ actionInProgress }),
       setConnectionStatus: (connectionStatus) => set({ connectionStatus }),
+      setSelectedNetwork: (selectedNetwork) => set({ selectedNetwork }),
 
       // Game lifecycle
       initializeGame: () =>

@@ -167,6 +167,7 @@ const pollRefetchUntilInactive = async (
     gamePhase,
     player,
     startGame: startGameUI,
+    setSelectedNetwork,
   } = useAppStore();
 
   const isConnected = status === "connected";
@@ -297,6 +298,50 @@ const handleStartOrEnterGame = async (): Promise<void> => {
   setShowBlackScreen(true);
 };
 
+// Auto-flow handler for "Play for Free" button
+const handlePlayForFree = async () => {
+  await ensureBgm();
+
+  try {
+    console.log("🎮 Starting Play for Free flow on Sepolia...");
+
+    // Set network to Sepolia
+    setSelectedNetwork("sepolia");
+
+    // Step 1: Connect wallet if not connected
+    if (!isConnected) {
+      console.log("Step 1: Connecting wallet...");
+      await handleWalletConnect();
+
+      // Wait for connection to establish
+      let attempts = 0;
+      while (!status || status !== "connected") {
+        if (attempts++ > 10) break;
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
+
+    // Step 2: Initialize player if not initialized
+    if (!hasPlayerStats) {
+      console.log("Step 2: Initializing player...");
+      const initResult = await initializePlayer();
+
+      if (initResult?.success) {
+        // Wait for initialization to complete
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        await refetch();
+      }
+    }
+
+    // Step 3: Start game automatically
+    console.log("Step 3: Starting game...");
+    await handleStartOrEnterGame();
+
+  } catch (error) {
+    console.error("Play for Free flow failed:", error);
+  }
+};
+
 
 
     
@@ -350,12 +395,13 @@ const handleStartOrEnterGame = async (): Promise<void> => {
           
 
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {/* NEW GAME — always clickable */}
+            {/* PLAY FOR FREE — Handles everything on Sepolia testnet */}
             <button
-              onClick={handleWalletConnect}
+              onClick={handlePlayForFree}
+              disabled={isLoading}
               style={{
                 all: "unset",
-                cursor: "pointer",
+                cursor: isLoading ? "not-allowed" : "pointer",
                 fontSize: 18,
                 letterSpacing: 1,
                 padding: "2px 0",
@@ -368,57 +414,14 @@ const handleStartOrEnterGame = async (): Promise<void> => {
                   borderRadius: 8,
                   padding: "8px 14px",
                   boxShadow: "0 2px 0 rgba(0,0,0,0.35)",
+                  opacity: isLoading ? 0.6 : 1,
                 }}
               >
-                NEW GAME
+                {isLoading ? "LOADING..." : "PLAY FOR FREE"}
               </span>
             </button>
 
-            {/* CREATE CHARACTER — greyed until wallet connected + canInitialize */}
-            <button
-              onClick={handlePlayerInit}
-              disabled={!isConnected || !canInitialize || initializing}
-              style={{
-                all: "unset",
-                cursor:
-                  isConnected && canInitialize && !initializing
-                    ? "pointer"
-                    : "not-allowed",
-                fontSize: 18,
-                letterSpacing: 1,
-                padding: "2px 0",
-                color:
-                  isConnected && canInitialize && !initializing
-                    ? "#FFFFFF"
-                    : "rgba(255,255,255,0.45)",
-              }}
-            >
-              CREATE CHARACTER
-            </button>
-
-            {/* ENTER THE ROOMS — greyed until flow complete */}
-            <button
-              onClick={handleStartOrEnterGame}
-              disabled={!isConnected || !hasPlayerStats || startingGame}
-              style={{
-                all: "unset",
-                cursor:
-                  isConnected && hasPlayerStats && !startingGame
-                    ? "pointer"
-                    : "not-allowed",
-                fontSize: 18,
-                letterSpacing: 1,
-                padding: "2px 0",
-                color:
-                  isConnected && hasPlayerStats && !startingGame
-                    ? "#FFFFFF"
-                    : "rgba(255,255,255,0.45)",
-              }}
-            >
-              ENTER THE ROOMS
-            </button>
-
-                  {/* TUTORIAL — also counts as a user gesture to start BGM */}
+            {/* PLAY ON MAINNET — Does nothing for now */}
             <button
               onClick={() => { void ensureBgm(); }}
               style={{
@@ -427,26 +430,19 @@ const handleStartOrEnterGame = async (): Promise<void> => {
                 fontSize: 18,
                 letterSpacing: 1,
                 padding: "2px 0",
-                color: "#FFFFFF",
               }}
             >
-              TUTORIAL
-            </button>
-
-
-            {/* EXIT GAME */}
-            <button
-              onClick={() => { void ensureBgm(); /* your exit flow here */ }}
-              style={{
-                all: "unset",
-                cursor: "pointer",
-                fontSize: 18,
-                letterSpacing: 1,
-                padding: "2px 0",
-                color: "#FFFFFF",
-              }}
-            >
-              EXIT GAME
+              <span
+                style={{
+                  background: "#888888",
+                  color: "#FFFFFF",
+                  borderRadius: 8,
+                  padding: "8px 14px",
+                  boxShadow: "0 2px 0 rgba(0,0,0,0.35)",
+                }}
+              >
+                PLAY ON MAINNET
+              </span>
             </button>
 
           </div>

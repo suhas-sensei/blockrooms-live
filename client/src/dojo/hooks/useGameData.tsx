@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useAccount } from "@starknet-react/core";
 import { addAddressPadding } from "starknet";
-import { dojoConfig } from "../dojoConfig";
+import { createDojoConfigDynamic } from "../dojoConfig";
 
 import * as models from "../models.gen";
 import useAppStore, { GamePhase } from '../../zustand/store';
@@ -34,7 +34,11 @@ interface UseGameDataReturn {
   isPlayerInitialized: boolean;
 }
 
-const TORII_URL = dojoConfig.toriiUrl + "/graphql";
+// Dynamic Torii URL based on selected network
+const getToriiUrl = () => {
+  const config = createDojoConfigDynamic();
+  return config.toriiUrl + "/graphql";
+};
 
 const PLAYER_QUERY = `
   query GetPlayerData($playerAddress: ContractAddress!) {
@@ -187,10 +191,13 @@ const parseCairoEnum = (enumValue: any) => {
 };
 
 const fetchPlayerData = async (playerAddress: string) => {
-  const response = await fetch(TORII_URL, {
+  const toriiUrl = getToriiUrl();
+  console.log("🔍 Fetching player data from:", toriiUrl);
+
+  const response = await fetch(toriiUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ 
+    body: JSON.stringify({
       query: PLAYER_QUERY,
       variables: { playerAddress }
     }),

@@ -1,42 +1,49 @@
 import type { PropsWithChildren } from "react";
+import { useMemo } from "react";
 import { sepolia, mainnet } from "@starknet-react/chains";
 import {
     jsonRpcProvider,
     StarknetConfig,
     starkscan,
 } from "@starknet-react/core";
-import cartridgeConnector from "../config/cartridgeConnector";
+import { createCartridgeConnectorDynamic } from "../config/cartridgeConnector";
+import useAppStore from "../zustand/store";
 
 export default function StarknetProvider({ children }: PropsWithChildren) {
-    const { VITE_PUBLIC_DEPLOY_TYPE } = import.meta.env;
+    const selectedNetwork = useAppStore((state) => state.selectedNetwork);
 
-    // Get RPC URL based on environment
-    const getRpcUrl = () => {
-        switch (VITE_PUBLIC_DEPLOY_TYPE) {
-            case "mainnet":
-                return "https://api.cartridge.gg/x/starknet/mainnet";
-            case "sepolia":
-                return "https://api.cartridge.gg/x/starknet/sepolia";
-            default:
-                return "https://api.cartridge.gg/x/starknet/sepolia"; 
-        }
-    };
+    // Default to sepolia for free play
+    const effectiveNetwork = selectedNetwork || "sepolia";
+
+    // Get RPC URL based on selected network
+    const getRpcUrl = useMemo(() => {
+        return effectiveNetwork === "sepolia"
+            ? "https://api.cartridge.gg/x/starknet/sepolia"
+            : "https://api.cartridge.gg/x/starknet/mainnet";
+    }, [effectiveNetwork]);
 
     // Create provider with the correct RPC URL
-    const provider = jsonRpcProvider({
-        rpc: () => ({ nodeUrl: getRpcUrl() }),
-    });
+    const provider = useMemo(() => jsonRpcProvider({
+        rpc: () => ({ nodeUrl: getRpcUrl }),
+    }), [getRpcUrl]);
 
     // Determine which chain to use
-    const chains = VITE_PUBLIC_DEPLOY_TYPE === "mainnet" 
-        ? [mainnet] 
-        : [sepolia];
+    const chains = useMemo(() =>
+        effectiveNetwork === "mainnet" ? [mainnet] : [sepolia],
+        [effectiveNetwork]
+    );
+
+    // Create connector based on selected network
+    const connector = useMemo(() =>
+        createCartridgeConnectorDynamic(effectiveNetwork),
+        [effectiveNetwork]
+    );
 
     return (
         <StarknetConfig
             autoConnect
             chains={chains}
-            connectors={[cartridgeConnector]}
+            connectors={[connector]}
             explorer={starkscan}
             provider={provider}
         >
