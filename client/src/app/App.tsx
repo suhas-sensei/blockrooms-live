@@ -32,6 +32,8 @@ import GrainVignetteOverlay from "../components/ui/GrainVignetteOverlay";
 import DarknessMask from "../components/ui/DarknessMask";
 import Flashlight from "../components/ui/Flashlight";
 import Table from "../models/Table";
+import { PickupPrompt } from "../components/ui/PickupPrompt";
+import { worldToScreen } from "../utils/worldToScreen";
 // near your other model imports
 import { Ghost } from "../models/Ghost";
 // import Pop, { PopHandle } from "../models/Pop";
@@ -131,6 +133,48 @@ const AimProbe = ({ onUpdate }: { onUpdate: (aiming: boolean) => void }) => {
   return null;
 };
 
+// Track pickup screen positions for the UI overlay
+interface PickupScreenPos {
+  x: number;
+  y: number;
+  isVisible: boolean;
+  message: string;
+  type: "first" | "ammo";
+}
+
+const PickupPositionTracker = ({
+  pickups,
+  onUpdate,
+}: {
+  pickups: Array<{ x: number; z: number; message: string; type: "first" | "ammo"; show: boolean }>;
+  onUpdate: (positions: PickupScreenPos[]) => void;
+}) => {
+  const { camera } = useThree();
+
+  useFrame(() => {
+    const positions: PickupScreenPos[] = [];
+
+    pickups.forEach((pickup) => {
+      if (!pickup.show) return;
+
+      // Convert world position to screen coordinates
+      const worldPos = new THREE.Vector3(pickup.x, 0.5, pickup.z); // Y=0.5 to place prompt slightly above ground
+      const screenPos = worldToScreen(worldPos, camera);
+
+      positions.push({
+        x: screenPos.x,
+        y: screenPos.y,
+        isVisible: screenPos.isVisible,
+        message: pickup.message,
+        type: pickup.type,
+      });
+    });
+
+    onUpdate(positions);
+  });
+
+  return null;
+};
 
 // Force the internal WebGL buffer to 1280x720 and DPR=1.
 // The canvas will still fill the screen via CSS, but it renders at 720p.
@@ -391,11 +435,13 @@ async function clearClientStorage(): Promise<void> {
 
 
 const App = (): JSX.Element => {
-  
+
 // DO NOT CHANGE UNNDER THIS AREA ---------------------------------------------------------------------------
     const [activeWeapon, setActiveWeapon] =
     useState<"pistol" | "shotgun">("pistol");
 
+    // Pickup prompt screen positions
+    const [pickupScreenPositions, setPickupScreenPositions] = useState<PickupScreenPos[]>([]);
 
     useEffect(() => {
   window.dispatchEvent(new CustomEvent("hud:weapon", { detail: { weapon: activeWeapon } }));
@@ -1909,60 +1955,17 @@ if (event.key.toLowerCase() === "b") {
       pointerEvents: "none", // visual panel only
     }}
   >
-    {/* First equip panel (only near 399,392 until picked) */}
-    {isNearFirstPickup && (
-      <div
-        style={{
-          position: "fixed",
-          bottom: "420px",
-          right: "20px",
-          zIndex: 3000,
-          backgroundColor: "rgba(0, 0, 0, 0.9)",
-          border: "2px solid #4488ff",
-          borderRadius: "8px",
-          padding: "20px",
-          color: "white",
-          fontFamily: "monospace",
-          minWidth: "300px",
-          textAlign: "center",
-          pointerEvents: "none",
-        }}
-      >
-        <div style={{ fontSize: "18px", fontWeight: "bold" }}>
-          Press T to Pick Up Gun
-        </div>
-        <div style={{ fontSize: "12px", opacity: 0.7, marginTop: 6 }}>
-          (Stand near X:{FIRST_PICKUP.x}, Z:{FIRST_PICKUP.z})
-        </div>
-      </div>
-    )}
-
-    {/* Ammo pickups panel (only near an untaken ammo pickup) */}
-    {!isNearFirstPickup && activePickup && (
-      <div
-        style={{
-          position: "fixed",
-          bottom: "420px",
-          right: "20px",
-          zIndex: 3000,
-          backgroundColor: "rgba(0, 0, 0, 0.9)",
-          border: "2px solid #4488ff",
-          borderRadius: "8px",
-          padding: "20px",
-          color: "white",
-          fontFamily: "monospace",
-          minWidth: "300px",
-          textAlign: "center",
-          pointerEvents: "none",
-        }}
-      >
-        <div style={{ fontSize: "18px", fontWeight: "bold" }}>
-          Press T to Collect Ammo (+10)
-        </div>
-        <div style={{ fontSize: "12px", opacity: 0.7, marginTop: 6 }}>
-          (Stand near X:{activePickup.x}, Z:{activePickup.z})
-        </div>
-      </div>
+    {/* Pickup prompts with dynamic positioning */}
+    {pickupScreenPositions.map((pos, idx) =>
+      pos.isVisible ? (
+        <PickupPrompt
+          key={idx}
+          x={pos.x}
+          y={pos.y}
+          message={pos.message}
+          keyPrompt="T"
+        />
+      ) : null
     )}
 
     <div style={{ fontSize: "18px", fontWeight: "bold" }}>
@@ -2359,6 +2362,31 @@ shadow-mapSize-height={2048}
         />
 
         <AimProbe onUpdate={setAimingAtEntity} />
+
+        {/* Track pickup positions for UI overlay */}
+        <PickupPositionTracker
+          pickups={[
+            {
+              x: FIRST_PICKUP.x,
+              z: FIRST_PICKUP.z,
+              message: "Pick Up Gun",
+              type: "first",
+              show: isNearFirstPickup,
+            },
+            ...(activePickup
+              ? [
+                  {
+                    x: activePickup.x,
+                    z: activePickup.z,
+                    message: "Collect Ammo (+10)",
+                    type: "ammo" as const,
+                    show: true,
+                  },
+                ]
+              : []),
+          ]}
+          onUpdate={setPickupScreenPositions}
+        />
 
         {/* Pointer lock */}
         <PointerLockControls />
