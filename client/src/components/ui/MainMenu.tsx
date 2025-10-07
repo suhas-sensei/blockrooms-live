@@ -246,22 +246,28 @@ const pollRefetchUntilInactive = async (
   const gameAlreadyActive =
     gamePhase === GamePhase.ACTIVE || (player as any)?.game_active;
 
-  const handleWalletConnect = async (): Promise<void> => {
-    await ensureBgm();
+const handlePlayForFree = async (): Promise<void> => {
+  await ensureBgm();
+
+  // Step 1: Connect wallet if not connected
+  if (!isConnected) {
     await handleConnect();
-    setTimeout(() => refetch(), 1500);
-  };
+    await new Promise((r) => setTimeout(r, 1500));
+    await refetch();
+    return; // Let user click again after connecting
+  }
 
-
-  const handlePlayerInit = async (): Promise<void> => {
-    await ensureBgm();
+  // Step 2: Initialize player if needed
+  if (!hasPlayerStats && canInitialize) {
     const res = await initializePlayer();
-    if (res?.success) setTimeout(() => refetch(), 2000);
-  };
+    if (res?.success) {
+      await new Promise((r) => setTimeout(r, 2000));
+      await refetch();
+    }
+    return; // Let user click again after initializing
+  }
 
-
-const handleStartOrEnterGame = async (): Promise<void> => {
-  // Stop menu music before entering the rooms
+  // Step 3: Enter the game (with session cleanup if needed)
   stopBgmWithFade(700);
 
   // If a previous session is still active, end it first (backend "Press B")
@@ -350,12 +356,13 @@ const handleStartOrEnterGame = async (): Promise<void> => {
           
 
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {/* NEW GAME — always clickable */}
+            {/* PLAY FOR FREE — handles everything */}
             <button
-              onClick={handleWalletConnect}
+              onClick={handlePlayForFree}
+              disabled={isLoading}
               style={{
                 all: "unset",
-                cursor: "pointer",
+                cursor: isLoading ? "not-allowed" : "pointer",
                 fontSize: 18,
                 letterSpacing: 1,
                 padding: "2px 0",
@@ -368,87 +375,12 @@ const handleStartOrEnterGame = async (): Promise<void> => {
                   borderRadius: 8,
                   padding: "8px 14px",
                   boxShadow: "0 2px 0 rgba(0,0,0,0.35)",
+                  opacity: isLoading ? 0.6 : 1,
                 }}
               >
-                NEW GAME
+                {isLoading ? "LOADING..." : "PLAY FOR FREE"}
               </span>
             </button>
-
-            {/* CREATE CHARACTER — greyed until wallet connected + canInitialize */}
-            <button
-              onClick={handlePlayerInit}
-              disabled={!isConnected || !canInitialize || initializing}
-              style={{
-                all: "unset",
-                cursor:
-                  isConnected && canInitialize && !initializing
-                    ? "pointer"
-                    : "not-allowed",
-                fontSize: 18,
-                letterSpacing: 1,
-                padding: "2px 0",
-                color:
-                  isConnected && canInitialize && !initializing
-                    ? "#FFFFFF"
-                    : "rgba(255,255,255,0.45)",
-              }}
-            >
-              CREATE CHARACTER
-            </button>
-
-            {/* ENTER THE ROOMS — greyed until flow complete */}
-            <button
-              onClick={handleStartOrEnterGame}
-              disabled={!isConnected || !hasPlayerStats || startingGame}
-              style={{
-                all: "unset",
-                cursor:
-                  isConnected && hasPlayerStats && !startingGame
-                    ? "pointer"
-                    : "not-allowed",
-                fontSize: 18,
-                letterSpacing: 1,
-                padding: "2px 0",
-                color:
-                  isConnected && hasPlayerStats && !startingGame
-                    ? "#FFFFFF"
-                    : "rgba(255,255,255,0.45)",
-              }}
-            >
-              ENTER THE ROOMS
-            </button>
-
-                  {/* TUTORIAL — also counts as a user gesture to start BGM */}
-            <button
-              onClick={() => { void ensureBgm(); }}
-              style={{
-                all: "unset",
-                cursor: "pointer",
-                fontSize: 18,
-                letterSpacing: 1,
-                padding: "2px 0",
-                color: "#FFFFFF",
-              }}
-            >
-              TUTORIAL
-            </button>
-
-
-            {/* EXIT GAME */}
-            <button
-              onClick={() => { void ensureBgm(); /* your exit flow here */ }}
-              style={{
-                all: "unset",
-                cursor: "pointer",
-                fontSize: 18,
-                letterSpacing: 1,
-                padding: "2px 0",
-                color: "#FFFFFF",
-              }}
-            >
-              EXIT GAME
-            </button>
-
           </div>
         </div>
       </div>
