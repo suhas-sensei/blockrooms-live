@@ -7,6 +7,7 @@ import { useInitializePlayer } from "../../dojo/hooks/useInitializePlayer";
 import { useStartGame } from "../../dojo/hooks/useStartGame";
 import { TutorialVideo } from "./TutorialVideo";
 import { useEndGame } from "../../dojo/hooks/useEndGame";
+import { NetworkType, setStoredNetwork, getStoredNetwork } from "../../config/networkConfig";
 
 
 type Move = "up" | "down" | "left" | "right";
@@ -246,8 +247,17 @@ const pollRefetchUntilInactive = async (
   const gameAlreadyActive =
     gamePhase === GamePhase.ACTIVE || (player as any)?.game_active;
 
-const handlePlayForFree = async (): Promise<void> => {
+const handlePlayForFree = async (network: NetworkType): Promise<void> => {
   await ensureBgm();
+
+  // Check if we need to switch networks
+  const currentNetwork = getStoredNetwork();
+  if (currentNetwork !== network) {
+    // Store the selected network and reload the page
+    setStoredNetwork(network);
+    window.location.reload();
+    return;
+  }
 
   // Step 1: Connect wallet if not connected
   if (!isConnected) {
@@ -356,9 +366,9 @@ const handlePlayForFree = async (): Promise<void> => {
           
 
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {/* PLAY FOR FREE — handles everything */}
+            {/* PLAY ON TESTNET — handles everything on sepolia */}
             <button
-              onClick={handlePlayForFree}
+              onClick={() => handlePlayForFree('sepolia')}
               disabled={isLoading}
               style={{
                 all: "unset",
@@ -378,7 +388,33 @@ const handlePlayForFree = async (): Promise<void> => {
                   opacity: isLoading ? 0.6 : 1,
                 }}
               >
-                {isLoading ? "LOADING..." : "PLAY FOR FREE"}
+                {isLoading ? "LOADING..." : "PLAY FOR FREE (TESTNET)"}
+              </span>
+            </button>
+
+            {/* PLAY ON MAINNET — handles everything on mainnet */}
+            <button
+              onClick={() => handlePlayForFree('mainnet')}
+              disabled={isLoading}
+              style={{
+                all: "unset",
+                cursor: isLoading ? "not-allowed" : "pointer",
+                fontSize: 18,
+                letterSpacing: 1,
+                padding: "2px 0",
+              }}
+            >
+              <span
+                style={{
+                  background: "#FFD700",
+                  color: "#000000",
+                  borderRadius: 8,
+                  padding: "8px 14px",
+                  boxShadow: "0 2px 0 rgba(0,0,0,0.35)",
+                  opacity: isLoading ? 0.6 : 1,
+                }}
+              >
+                {isLoading ? "LOADING..." : "PLAY ON MAINNET"}
               </span>
             </button>
           </div>

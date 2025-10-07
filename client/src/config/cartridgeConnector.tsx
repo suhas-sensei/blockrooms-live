@@ -3,15 +3,16 @@ import { ControllerConnector } from "@cartridge/connector";
 import { ControllerOptions } from "@cartridge/controller";
 import { constants } from "starknet";
 import { manifest } from "./manifest";
+import { getStoredNetwork, getCurrentNetworkConfig } from "./networkConfig";
 
-const { VITE_PUBLIC_DEPLOY_TYPE } = import.meta.env;
+// Get the current network from localStorage
+const currentNetwork = getStoredNetwork();
+const networkConfig = getCurrentNetworkConfig();
 
-console.log("VITE_PUBLIC_DEPLOY_TYPE", VITE_PUBLIC_DEPLOY_TYPE);
+console.log("Current Network:", currentNetwork);
 
 const getRpcUrl = () => {
-  switch (VITE_PUBLIC_DEPLOY_TYPE) {
-    case "localhost":
-        return "http://localhost:5050"; // Katana localhost default port
+  switch (currentNetwork) {
     case "mainnet":
         return "https://api.cartridge.gg/x/starknet/mainnet";
     case "sepolia":
@@ -22,9 +23,7 @@ const getRpcUrl = () => {
 };
 
 const getDefaultChainId = () => {
-  switch (VITE_PUBLIC_DEPLOY_TYPE) {
-    case "localhost":
-        return "0x4b4154414e41"; // KATANA in ASCII
+  switch (currentNetwork) {
     case "mainnet":
         return constants.StarknetChainId.SN_MAIN;
     case "sepolia":
