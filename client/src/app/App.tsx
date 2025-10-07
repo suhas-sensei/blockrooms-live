@@ -1955,17 +1955,14 @@ if (event.key.toLowerCase() === "b") {
       pointerEvents: "none", // visual panel only
     }}
   >
-    {/* Pickup prompts with dynamic positioning */}
-    {pickupScreenPositions.map((pos, idx) =>
-      pos.isVisible ? (
-        <PickupPrompt
-          key={idx}
-          x={pos.x}
-          y={pos.y}
-          message={pos.message}
-          keyPrompt="T"
-        />
-      ) : null
+    {/* Pickup prompts at center of screen */}
+    {pickupScreenPositions.length > 0 && pickupScreenPositions[0].isVisible && (
+      <PickupPrompt
+        x={window.innerWidth / 2}
+        y={window.innerHeight / 2}
+        message={pickupScreenPositions[0].message}
+        keyPrompt="T"
+      />
     )}
 
     <div style={{ fontSize: "18px", fontWeight: "bold" }}>
