@@ -297,6 +297,61 @@ const handleStartOrEnterGame = async (): Promise<void> => {
   setShowBlackScreen(true);
 };
 
+// Single button handler: connect -> initialize -> clear session -> start game
+const handlePlayBlockRooms = async (): Promise<void> => {
+  await ensureBgm();
+
+  // Step 1: Connect wallet if not connected
+  if (!isConnected) {
+    await handleConnect();
+    await new Promise((r) => setTimeout(r, 1500));
+    await refetch();
+  }
+
+  // Step 2: Initialize player if needed
+  if (canInitialize && !hasPlayerStats) {
+    const res = await initializePlayer();
+    if (res?.success) {
+      await new Promise((r) => setTimeout(r, 2000));
+      await refetch();
+    }
+  }
+
+  // Step 3: Clear session and start game
+  stopBgmWithFade(700);
+
+  // If a previous session is still active, end it first
+  if (gameAlreadyActive && canEndGame) {
+    try {
+      await endGame();
+    } catch {
+      // ignore; proceed to refresh and start
+    }
+
+    // HARD REFRESH OF FRONTEND STATE
+    try {
+      await pollRefetchUntilInactive(refetch, 12, 350);
+    } catch {
+      // even if polling fails, still move on
+    }
+  }
+
+  // Start a fresh session
+  if (canStartGame) {
+    try {
+      await startGame();
+      await refetch();
+      await new Promise((r) => setTimeout(r, 250));
+      await refetch();
+    } catch {
+      // swallow; UI flow continues
+    }
+  }
+
+  // Start tutorial sequence: black screen -> video -> game
+  setShowBlackScreen(true);
+};
+
 
 
     
@@ -333,123 +388,53 @@ const handleStartOrEnterGame = async (): Promise<void> => {
           }}
         />
 
-        {/* left menu column */}
+        {/* Center button column */}
         <div
           style={{
             position: "relative",
             zIndex: 1,
-            width: 920,
-            padding: "396px 260px",
+            width: "100%",
             display: "flex",
-            flexDirection: "column",
-            gap: 18,
-            color: "white",
+            alignItems: "center",
+            justifyContent: "center",
             userSelect: "none",
           }}
         >
-          
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {/* NEW GAME — always clickable */}
-            <button
-              onClick={handleWalletConnect}
-              style={{
-                all: "unset",
-                cursor: "pointer",
-                fontSize: 18,
-                letterSpacing: 1,
-                padding: "2px 0",
-              }}
-            >
-              <span
-                style={{
-                  background: "#FFFFFF",
-                  color: "#000000",
-                  borderRadius: 8,
-                  padding: "8px 14px",
-                  boxShadow: "0 2px 0 rgba(0,0,0,0.35)",
-                }}
-              >
-                NEW GAME
-              </span>
-            </button>
-
-            {/* CREATE CHARACTER — greyed until wallet connected + canInitialize */}
-            <button
-              onClick={handlePlayerInit}
-              disabled={!isConnected || !canInitialize || initializing}
-              style={{
-                all: "unset",
-                cursor:
-                  isConnected && canInitialize && !initializing
-                    ? "pointer"
-                    : "not-allowed",
-                fontSize: 18,
-                letterSpacing: 1,
-                padding: "2px 0",
-                color:
-                  isConnected && canInitialize && !initializing
-                    ? "#FFFFFF"
-                    : "rgba(255,255,255,0.45)",
-              }}
-            >
-              CREATE CHARACTER
-            </button>
-
-            {/* ENTER THE ROOMS — greyed until flow complete */}
-            <button
-              onClick={handleStartOrEnterGame}
-              disabled={!isConnected || !hasPlayerStats || startingGame}
-              style={{
-                all: "unset",
-                cursor:
-                  isConnected && hasPlayerStats && !startingGame
-                    ? "pointer"
-                    : "not-allowed",
-                fontSize: 18,
-                letterSpacing: 1,
-                padding: "2px 0",
-                color:
-                  isConnected && hasPlayerStats && !startingGame
-                    ? "#FFFFFF"
-                    : "rgba(255,255,255,0.45)",
-              }}
-            >
-              ENTER THE ROOMS
-            </button>
-
-                  {/* TUTORIAL — also counts as a user gesture to start BGM */}
-            <button
-              onClick={() => { void ensureBgm(); }}
-              style={{
-                all: "unset",
-                cursor: "pointer",
-                fontSize: 18,
-                letterSpacing: 1,
-                padding: "2px 0",
-                color: "#FFFFFF",
-              }}
-            >
-              TUTORIAL
-            </button>
-
-
-            {/* EXIT GAME */}
-            <button
-              onClick={() => { void ensureBgm(); /* your exit flow here */ }}
-              style={{
-                all: "unset",
-                cursor: "pointer",
-                fontSize: 18,
-                letterSpacing: 1,
-                padding: "2px 0",
-                color: "#FFFFFF",
-              }}
-            >
-              EXIT GAME
-            </button>
-
-          </div>
+          {/* Single centered Play BlockRooms button */}
+          <button
+            onClick={handlePlayBlockRooms}
+            disabled={isLoading}
+            onMouseEnter={() => setHovered(1)}
+            onMouseLeave={() => setHovered(null)}
+            style={{
+              all: "unset",
+              cursor: isLoading ? "wait" : "pointer",
+              fontSize: 42,
+              fontWeight: "bold",
+              letterSpacing: 2,
+              padding: "24px 48px",
+              background: hovered === 1
+                ? "linear-gradient(135deg, #8B0000 0%, #4B0000 50%, #1a0000 100%)"
+                : "linear-gradient(135deg, #DC143C 0%, #8B0000 50%, #4B0000 100%)",
+              color: hovered === 1 ? "#FF6347" : "#FFFFFF",
+              borderRadius: 16,
+              boxShadow: hovered === 1
+                ? "0 0 40px rgba(220, 20, 60, 0.9), 0 0 80px rgba(220, 20, 60, 0.5), inset 0 0 20px rgba(255, 0, 0, 0.3)"
+                : "0 8px 0 rgba(0,0,0,0.5), 0 0 30px rgba(220, 20, 60, 0.6)",
+              textShadow: hovered === 1
+                ? "0 0 10px rgba(255, 99, 71, 0.8), 0 0 20px rgba(255, 0, 0, 0.6)"
+                : "0 2px 4px rgba(0,0,0,0.8), 0 0 10px rgba(139, 0, 0, 0.5)",
+              transform: hovered === 1 ? "scale(1.05) translateY(-4px)" : "scale(1)",
+              transition: "all 0.3s ease",
+              border: hovered === 1
+                ? "3px solid rgba(255, 99, 71, 0.8)"
+                : "3px solid rgba(139, 0, 0, 0.6)",
+              fontFamily: "'Creepster', 'Courier New', monospace",
+              opacity: isLoading ? 0.6 : 1,
+            }}
+          >
+            {isLoading ? "INITIALIZING..." : "Play BlockRooms"}
+          </button>
         </div>
       </div>
 
