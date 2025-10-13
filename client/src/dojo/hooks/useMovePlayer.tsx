@@ -69,6 +69,14 @@ export const useMovePlayer = () => {
       setError(error);
       return { success: false, error };
     }
+
+    // Verify on-chain game session is active (prevent old session interference)
+    if (!player.game_active) {
+      const error = "Game session is not active. Please start a new game.";
+      setState(prev => ({ ...prev, error }));
+      setError(error);
+      return { success: false, error };
+    }
     
     if (![0, 1, 2].includes(xDelta) || ![0, 1, 2].includes(yDelta)) {
       const error = "Invalid movement. Delta must be 0, 1, or 2.";

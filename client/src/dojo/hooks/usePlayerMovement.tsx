@@ -96,23 +96,29 @@ export const usePlayerMovement = (): UsePlayerMovementReturn => {
   
   const handleTransactionFailure = useCallback((error: string) => {
     console.log('❌ Boundary crossing failed, reverting position');
-    
-    
+
+
     // const revertPosition = {
     //   x: lastVerifiedPosition.current.x,
-    //   y: 1.5, 
+    //   y: 1.5,
     //   z: lastVerifiedPosition.current.z
     // };
-    
+
     // updatePosition(revertPosition);
     setTransactionError(error);
     isProcessingBoundary.current = false;
-    
-    
+
+
     setTimeout(() => {
       setShowTransactionPopup(false);
       setTransactionError(null);
     }, 300);
+
+    // Auto-refresh the game after 3 seconds to ensure clean state
+    console.log('🔄 Auto-refreshing game in 3 seconds...');
+    setTimeout(() => {
+      window.location.reload();
+    }, 3000);
   }, [updatePosition]);
 
   

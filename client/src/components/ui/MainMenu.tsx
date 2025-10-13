@@ -210,17 +210,19 @@ const pollRefetchUntilInactive = async (
   useEffect(() => {
     if (!showBlackScreen && !showTutorialVideo) return;
 
-    const handleEscape = (e: KeyboardEvent) => {
+    const handleEscape = async (e: KeyboardEvent) => {
       if (e.key === "Escape" || e.code === "Escape") {
         setShowBlackScreen(false);
         setShowTutorialVideo(false);
+        // Final state refresh before entering game
+        await refetch();
         startGameUI();
       }
     };
 
     window.addEventListener("keydown", handleEscape);
     return () => window.removeEventListener("keydown", handleEscape);
-  }, [showBlackScreen, showTutorialVideo, startGameUI]);
+  }, [showBlackScreen, showTutorialVideo, startGameUI, refetch]);
 
   useEffect(() => {
     setConnectionStatus(
@@ -289,8 +291,9 @@ const handlePlayForFree = async (network: NetworkType): Promise<void> => {
     }
 
     // HARD REFRESH OF FRONTEND STATE: refetch until store no longer marks session active
+    // Increased attempts for better cleanup
     try {
-      await pollRefetchUntilInactive(refetch, 12, 350);
+      await pollRefetchUntilInactive(refetch, 18, 400);
     } catch {
       // even if polling fails, still move on
     }
@@ -300,10 +303,14 @@ const handlePlayForFree = async (network: NetworkType): Promise<void> => {
   if (canStartGame) {
     try {
       await startGame();
-      // One extra refetch burst so HUD shows brand-new session values immediately
+      // Aggressive refetch burst to ensure brand-new session values are loaded
       await refetch();
-      await new Promise((r) => setTimeout(r, 250));
+      await new Promise((r) => setTimeout(r, 400));
       await refetch();
+      await new Promise((r) => setTimeout(r, 300));
+      await refetch();
+      // Final wait to ensure state propagation
+      await new Promise((r) => setTimeout(r, 200));
     } catch {
       // swallow; UI flow continues
     }
@@ -497,9 +504,10 @@ const handlePlayForFree = async (network: NetworkType): Promise<void> => {
 
       {showTutorial && (
         <TutorialVideo
-          onEnded={() => {
+          onEnded={async () => {
             setShowTutorial(false);
-            // Now reveal the game UI
+            // Final state refresh before revealing game UI
+            await refetch();
             startGameUI();
           }}
         />
@@ -540,9 +548,11 @@ const handlePlayForFree = async (network: NetworkType): Promise<void> => {
       {/* Tutorial video after black screen */}
       {showTutorialVideo && (
         <TutorialVideo
-          onEnded={() => {
+          onEnded={async () => {
             setShowTutorialVideo(false);
-            // Now reveal the game UI
+            // Final state refresh to ensure clean session before revealing game UI
+            await refetch();
+            await new Promise((r) => setTimeout(r, 100));
             startGameUI();
           }}
         />
