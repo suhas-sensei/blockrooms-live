@@ -370,22 +370,63 @@ const handlePlayForFree = async (network: NetworkType): Promise<void> => {
             <button
               onClick={() => handlePlayForFree('sepolia')}
               disabled={isLoading}
+              onMouseEnter={() => setHovered(0)}
+              onMouseLeave={() => setHovered(null)}
               style={{
                 all: "unset",
                 cursor: isLoading ? "not-allowed" : "pointer",
-                fontSize: 18,
-                letterSpacing: 1,
-                padding: "2px 0",
+                background: hovered === 0 ? "rgba(0, 0, 0, 0.9)" : "rgba(0, 0, 0, 0.7)",
+                border: "2px solid rgba(255, 255, 255, 0.2)",
+                borderRadius: 12,
+                padding: "16px 24px",
+                display: "flex",
+                alignItems: "center",
+                gap: 16,
+                transition: "all 0.3s ease",
+                opacity: isLoading ? 0.6 : 1,
+                boxShadow: hovered === 0
+                  ? "0 8px 24px rgba(0, 0, 0, 0.5)"
+                  : "0 4px 12px rgba(0, 0, 0, 0.3)",
+                transform: hovered === 0 ? "translateY(-2px)" : "translateY(0)",
               }}
             >
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                style={{ flexShrink: 0 }}
+              >
+                <path
+                  d="M12 2L2 7L12 12L22 7L12 2Z"
+                  stroke="white"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M2 17L12 22L22 17"
+                  stroke="white"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M2 12L12 17L22 12"
+                  stroke="white"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
               <span
                 style={{
-                  background: "#FFFFFF",
-                  color: "#000000",
-                  borderRadius: 8,
-                  padding: "8px 14px",
-                  boxShadow: "0 2px 0 rgba(0,0,0,0.35)",
-                  opacity: isLoading ? 0.6 : 1,
+                  color: "white",
+                  fontSize: 16,
+                  fontWeight: 600,
+                  letterSpacing: 0.5,
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
                 }}
               >
                 {isLoading ? "LOADING..." : "PLAY FOR FREE (TESTNET)"}
@@ -396,22 +437,55 @@ const handlePlayForFree = async (network: NetworkType): Promise<void> => {
             <button
               onClick={() => handlePlayForFree('mainnet')}
               disabled={isLoading}
+              onMouseEnter={() => setHovered(1)}
+              onMouseLeave={() => setHovered(null)}
               style={{
                 all: "unset",
                 cursor: isLoading ? "not-allowed" : "pointer",
-                fontSize: 18,
-                letterSpacing: 1,
-                padding: "2px 0",
+                background: hovered === 1 ? "rgba(0, 0, 0, 0.9)" : "rgba(0, 0, 0, 0.7)",
+                border: "2px solid rgba(255, 215, 0, 0.4)",
+                borderRadius: 12,
+                padding: "16px 24px",
+                display: "flex",
+                alignItems: "center",
+                gap: 16,
+                transition: "all 0.3s ease",
+                opacity: isLoading ? 0.6 : 1,
+                boxShadow: hovered === 1
+                  ? "0 8px 24px rgba(255, 215, 0, 0.3)"
+                  : "0 4px 12px rgba(0, 0, 0, 0.3)",
+                transform: hovered === 1 ? "translateY(-2px)" : "translateY(0)",
               }}
             >
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                style={{ flexShrink: 0 }}
+              >
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="9"
+                  stroke="#FFD700"
+                  strokeWidth="2"
+                />
+                <path
+                  d="M12 6V12L16 14"
+                  stroke="#FFD700"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
               <span
                 style={{
-                  background: "#FFD700",
-                  color: "#000000",
-                  borderRadius: 8,
-                  padding: "8px 14px",
-                  boxShadow: "0 2px 0 rgba(0,0,0,0.35)",
-                  opacity: isLoading ? 0.6 : 1,
+                  color: "#FFD700",
+                  fontSize: 16,
+                  fontWeight: 600,
+                  letterSpacing: 0.5,
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
                 }}
               >
                 {isLoading ? "LOADING..." : "PLAY ON MAINNET"}
