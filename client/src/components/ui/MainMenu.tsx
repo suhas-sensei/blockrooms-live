@@ -263,27 +263,47 @@ const handlePlayForFree = async (network: NetworkType): Promise<void> => {
 
   // Step 1: Connect wallet if not connected
   if (!isConnected) {
+    console.log('🔌 Connecting wallet...');
     await handleConnect();
     await new Promise((r) => setTimeout(r, 1500));
     await refetch();
-    return; // Let user click again after connecting
+    // Continue to next step instead of returning
+  }
+
+  // Re-check connection status after potential connection
+  const currentStatus = useAppStore.getState().connectionStatus;
+  if (currentStatus !== 'connected') {
+    console.log('❌ Wallet connection failed');
+    return; // Stop if connection failed
   }
 
   // Step 2: Initialize player if needed
-  if (!hasPlayerStats && canInitialize) {
+  const currentPlayerStats = useAppStore.getState().playerStats;
+  if (!currentPlayerStats && canInitialize) {
+    console.log('🎮 Initializing player...');
     const res = await initializePlayer();
     if (res?.success) {
       await new Promise((r) => setTimeout(r, 2000));
       await refetch();
+      // Continue to next step instead of returning
+    } else {
+      console.log('❌ Player initialization failed');
+      return; // Stop if initialization failed
     }
-    return; // Let user click again after initializing
   }
 
   // Step 3: Enter the game (with session cleanup if needed)
+  console.log('🎬 Starting game...');
   stopBgmWithFade(700);
 
+  // Get fresh state
+  const freshState = useAppStore.getState();
+  const currentGameAlreadyActive =
+    freshState.gamePhase === GamePhase.ACTIVE || freshState.player?.game_active;
+
   // If a previous session is still active, end it first (backend "Press B")
-  if (gameAlreadyActive && canEndGame) {
+  if (currentGameAlreadyActive && canEndGame) {
+    console.log('🔄 Ending previous session...');
     try {
       await endGame();
     } catch {
@@ -301,6 +321,7 @@ const handlePlayForFree = async (network: NetworkType): Promise<void> => {
 
   // Start a fresh session if allowed
   if (canStartGame) {
+    console.log('▶️ Starting new game session...');
     try {
       await startGame();
       // Aggressive refetch burst to ensure brand-new session values are loaded
@@ -317,6 +338,7 @@ const handlePlayForFree = async (network: NetworkType): Promise<void> => {
   }
 
   // Start tutorial sequence: black screen -> video -> game
+  console.log('✅ Launching game UI...');
   setShowBlackScreen(true);
 };
 
