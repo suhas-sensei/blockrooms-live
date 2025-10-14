@@ -80,6 +80,10 @@ interface AppState {
   moving: boolean;
   velocity: { x: number; y: number; z: number };
   activeWeapon: "pistol" | "shotgun";
+
+  // Room code for multiplayer
+  roomCode: string | null;
+  isRoomCreator: boolean;
 }
 
 // Define actions interface
@@ -152,6 +156,10 @@ interface AppActions {
   setMoving: (moving: boolean) => void;
   setVelocity: (velocity: { x: number; y: number; z: number }) => void;
   setActiveWeapon: (weapon: "pistol" | "shotgun") => void;
+
+  // Room code actions
+  setRoomCode: (code: string | null) => void;
+  setIsRoomCreator: (isCreator: boolean) => void;
 
   // Utility getters
   canMove: () => boolean;
@@ -294,6 +302,10 @@ const initialState: AppState = {
   moving: false,
   velocity: { x: 0, y: 0, z: 0 },
   activeWeapon: "pistol",
+
+  // Room code
+  roomCode: null,
+  isRoomCreator: false,
 };
 
 // Maximum recent events to keep (for performance)
@@ -629,6 +641,10 @@ const useAppStore = create<AppStore>()(
       setMoving: (moving) => set({ moving }),
       setVelocity: (velocity) => set({ velocity }),
       setActiveWeapon: (activeWeapon) => set({ activeWeapon }),
+
+      // Room code actions
+      setRoomCode: (roomCode) => set({ roomCode }),
+      setIsRoomCreator: (isRoomCreator) => set({ isRoomCreator }),
 
       // Utility getters
       canMove: () => {

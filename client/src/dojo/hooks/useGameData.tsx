@@ -14,6 +14,7 @@ interface UseGameDataReturn {
   currentRoom: models.Room | null;
   entities: models.Entity[];
   shardLocations: models.ShardLocation[];
+  allPlayers: models.Player[];
   isLoading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
@@ -38,6 +39,7 @@ const TORII_URL = dojoConfig.toriiUrl + "/graphql";
 
 const PLAYER_QUERY = `
   query GetPlayerData($playerAddress: ContractAddress!) {
+    # Fetch current player data
     blockroomsPlayerModels(where: {player_id: $playerAddress}) {
       edges {
         node {
@@ -150,12 +152,28 @@ const PLAYER_QUERY = `
     blockroomsShardLocationModels {
       edges {
         node {
-          shard_id 
+          shard_id
           room_id
           numbered_shard {
             option
           }
           collected
+        }
+      }
+    }
+    # Fetch all active players for multiplayer
+    allPlayers: blockroomsPlayerModels(where: {game_active: true}) {
+      edges {
+        node {
+          player_id
+          position {
+            x
+            y
+          }
+          health
+          max_health
+          is_alive
+          game_active
         }
       }
     }
@@ -220,7 +238,9 @@ const fetchPlayerData = async (playerAddress: string) => {
   const roomNodes = data.blockroomsRoomModels?.edges?.map((e: any) => e.node) || [];
   const entityNodes = data.blockroomsEntityModels?.edges?.map((e: any) => e.node) || [];
   const shardNodes = data.blockroomsShardLocationModels?.edges?.map((e: any) => e.node) || [];
+  const allPlayersNodes = data.allPlayers?.edges?.map((e: any) => e.node) || [];
   console.log("entityNodes", entityNodes);
+  console.log("allPlayersNodes", allPlayersNodes);
   return {
     player: playerNode ? {
       player_id: playerNode.player_id,
@@ -314,12 +334,32 @@ const fetchPlayerData = async (playerAddress: string) => {
       numbered_shard: parseCairoOption(node.numbered_shard),
       collected: Boolean(node.collected),
     } as models.ShardLocation)),
+
+    allPlayers: allPlayersNodes.map((node: any) => ({
+      player_id: node.player_id,
+      position: parsePosition(node.position),
+      health: parseNumber(node.health),
+      max_health: parseNumber(node.max_health),
+      is_alive: Boolean(node.is_alive),
+      game_active: Boolean(node.game_active),
+      // Optional fields with defaults
+      current_room: 0,
+      shards: 0,
+      current_session_id: 0,
+      rooms_cleared: 0,
+      has_shard_one: false,
+      has_shard_two: false,
+      has_shard_three: false,
+      special_ability_cooldown: 0,
+      has_key: false,
+    } as models.Player)),
   };
 };
 
 export const useGameData = (): UseGameDataReturn => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [allPlayers, setAllPlayers] = useState<models.Player[]>([]);
   const { account } = useAccount();
   
   // Store state and actions
@@ -373,12 +413,13 @@ export const useGameData = (): UseGameDataReturn => {
         setPlayerStats(data.playerStats);
         setGameSession(data.gameSession);
         setGameConfig(data.gameConfig);
-        
+
         // Set world state
         setRooms(data.rooms);
         console.log("data.entities", data.entities);
         setEntities(data.entities);
         setShardLocations(data.shardLocations);
+        setAllPlayers(data.allPlayers);
 
         // Find and set current room based on player's current_room field
         if (data.player) {
@@ -451,6 +492,7 @@ export const useGameData = (): UseGameDataReturn => {
     currentRoom,
     entities: getEntitiesInCurrentRoom(),
     shardLocations: getShardsInCurrentRoom(),
+    allPlayers,
     isLoading,
     error,
     refetch,

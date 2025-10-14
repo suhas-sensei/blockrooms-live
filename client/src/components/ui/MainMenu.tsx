@@ -5,8 +5,7 @@ import { useStarknetConnect } from "../../dojo/hooks/useStarknetConnect";
 import { useGameData } from "../../dojo/hooks/useGameData";
 import { useInitializePlayer } from "../../dojo/hooks/useInitializePlayer";
 import { useStartGame } from "../../dojo/hooks/useStartGame";
-import { TutorialVideo } from "./TutorialVideo";
-import { useEndGame } from "../../dojo/hooks/useEndGame";
+import { RoomCodeModal } from "./RoomCodeModal";
 
 
 type Move = "up" | "down" | "left" | "right";
@@ -159,7 +158,6 @@ const pollRefetchUntilInactive = async (
     canInitialize,
   } = useInitializePlayer();
   const { startGame, isLoading: startingGame, canStartGame } = useStartGame();
-  const { endGame, canEndGame } = useEndGame();
 
   const {
     setConnectionStatus,
@@ -167,6 +165,8 @@ const pollRefetchUntilInactive = async (
     gamePhase,
     player,
     startGame: startGameUI,
+    setRoomCode,
+    setIsRoomCreator,
   } = useAppStore();
 
   const isConnected = status === "connected";
@@ -187,39 +187,11 @@ const pollRefetchUntilInactive = async (
   );
   const [bg, setBg] = useState(0);
   const [dir, setDir] = useState<Move>("up");
-  const [showTutorial, setShowTutorial] = useState(false);
-    const [hovered, setHovered] = useState<number | null>(null);
+  const [hovered, setHovered] = useState<number | null>(null);
 
-  // Tutorial flow states
-  const [showBlackScreen, setShowBlackScreen] = useState(false);
-  const [showTutorialVideo, setShowTutorialVideo] = useState(false);
+  // Room code modal state
+  const [showRoomCodeModal, setShowRoomCodeModal] = useState(false);
 
-  // Handle tutorial sequence: black screen (4s) -> video -> game
-  useEffect(() => {
-    if (showBlackScreen) {
-      const timer = setTimeout(() => {
-        setShowBlackScreen(false);
-        setShowTutorialVideo(true);
-      }, 4000); // 4 seconds
-      return () => clearTimeout(timer);
-    }
-  }, [showBlackScreen]);
-
-  // Handle ESC key to skip tutorial
-  useEffect(() => {
-    if (!showBlackScreen && !showTutorialVideo) return;
-
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape" || e.code === "Escape") {
-        setShowBlackScreen(false);
-        setShowTutorialVideo(false);
-        startGameUI();
-      }
-    };
-
-    window.addEventListener("keydown", handleEscape);
-    return () => window.removeEventListener("keydown", handleEscape);
-  }, [showBlackScreen, showTutorialVideo, startGameUI]);
 
   useEffect(() => {
     setConnectionStatus(
@@ -261,24 +233,21 @@ const pollRefetchUntilInactive = async (
 
 
 const handleStartOrEnterGame = async (): Promise<void> => {
+  await ensureBgm();
+  // Show room code modal instead of starting game directly
+  setShowRoomCodeModal(true);
+};
+
+const handleJoinRoom = async (roomCode: string, isCreator: boolean): Promise<void> => {
+  // Store room code and creator status
+  setRoomCode(roomCode);
+  setIsRoomCreator(isCreator);
+
+  // Close the modal
+  setShowRoomCodeModal(false);
+
   // Stop menu music before entering the rooms
   stopBgmWithFade(700);
-
-  // If a previous session is still active, end it first (backend "Press B")
-  if (gameAlreadyActive && canEndGame) {
-    try {
-      await endGame();
-    } catch {
-      // ignore; proceed to refresh and start
-    }
-
-    // HARD REFRESH OF FRONTEND STATE: refetch until store no longer marks session active
-    try {
-      await pollRefetchUntilInactive(refetch, 12, 350);
-    } catch {
-      // even if polling fails, still move on
-    }
-  }
 
   // Start a fresh session if allowed
   if (canStartGame) {
@@ -293,8 +262,8 @@ const handleStartOrEnterGame = async (): Promise<void> => {
     }
   }
 
-  // Start tutorial sequence: black screen -> video -> game
-  setShowBlackScreen(true);
+  // Start the game UI
+  startGameUI();
 };
 
 
@@ -453,56 +422,11 @@ const handleStartOrEnterGame = async (): Promise<void> => {
         </div>
       </div>
 
-      {showTutorial && (
-        <TutorialVideo
-          onEnded={() => {
-            setShowTutorial(false);
-            // Now reveal the game UI
-            startGameUI();
-          }}
-        />
-      )}
-
-      {/* Black screen overlay (4 seconds) */}
-      {showBlackScreen && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "black",
-            zIndex: 9999,
-          }}
-        >
-          <style>{`
-            @keyframes blink {
-              0%, 100% { opacity: 1; }
-              50% { opacity: 0.3; }
-            }
-          `}</style>
-          <div
-            style={{
-              position: "absolute",
-              bottom: "40px",
-              left: "40px",
-              color: "white",
-              fontFamily: "monospace",
-              fontSize: "18px",
-              animation: "blink 1.5s ease-in-out infinite",
-            }}
-          >
-            loading...
-          </div>
-        </div>
-      )}
-
-      {/* Tutorial video after black screen */}
-      {showTutorialVideo && (
-        <TutorialVideo
-          onEnded={() => {
-            setShowTutorialVideo(false);
-            // Now reveal the game UI
-            startGameUI();
-          }}
+      {/* Room code modal */}
+      {showRoomCodeModal && (
+        <RoomCodeModal
+          onClose={() => setShowRoomCodeModal(false)}
+          onJoinRoom={handleJoinRoom}
         />
       )}
     </div>
