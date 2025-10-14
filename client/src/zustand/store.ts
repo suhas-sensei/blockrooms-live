@@ -80,6 +80,26 @@ interface AppState {
   moving: boolean;
   velocity: { x: number; y: number; z: number };
   activeWeapon: "pistol" | "shotgun";
+
+  // Persistent game state for rooms/doors/entities
+  doorsOpened: Record<string, boolean>; // door1-door7 opened states
+  shardsCollected: Record<string, boolean>; // room1-room7 shard collection states
+  entitiesVisible: Record<string, boolean>; // entity1-entity7 visibility states
+  ghostsState: {
+    hits: Record<string, number>; // ghost hits count
+    dead: Record<string, boolean>; // ghost dead status
+    spawned: Record<string, boolean>; // ghost spawned status
+  };
+  pickupsState: {
+    firstPickupTaken: boolean;
+    pickupTaken: Record<string, boolean>; // pickup IDs that have been taken
+  };
+  panelsEnabled: {
+    shoot: boolean;
+    shard: boolean;
+    exit: boolean;
+  };
+  canEndGame: boolean;
 }
 
 // Define actions interface
@@ -152,6 +172,19 @@ interface AppActions {
   setMoving: (moving: boolean) => void;
   setVelocity: (velocity: { x: number; y: number; z: number }) => void;
   setActiveWeapon: (weapon: "pistol" | "shotgun") => void;
+
+  // Persistent game state actions
+  setDoorOpened: (door: string, opened: boolean) => void;
+  setShardCollected: (room: string, collected: boolean) => void;
+  setEntityVisible: (entity: string, visible: boolean) => void;
+  setGhostHits: (ghost: string, hits: number) => void;
+  setGhostDead: (ghost: string, dead: boolean) => void;
+  setGhostSpawned: (ghost: string, spawned: boolean) => void;
+  setFirstPickupTaken: (taken: boolean) => void;
+  setPickupTaken: (pickupId: string, taken: boolean) => void;
+  setPanelEnabled: (panel: "shoot" | "shard" | "exit", enabled: boolean) => void;
+  setCanEndGame: (can: boolean) => void;
+  resetGameState: () => void; // Reset all persistent game state
 
   // Utility getters
   canMove: () => boolean;
@@ -294,6 +327,26 @@ const initialState: AppState = {
   moving: false,
   velocity: { x: 0, y: 0, z: 0 },
   activeWeapon: "pistol",
+
+  // Persistent game state
+  doorsOpened: {},
+  shardsCollected: {},
+  entitiesVisible: {},
+  ghostsState: {
+    hits: {},
+    dead: {},
+    spawned: {},
+  },
+  pickupsState: {
+    firstPickupTaken: false,
+    pickupTaken: {},
+  },
+  panelsEnabled: {
+    shoot: false,
+    shard: false,
+    exit: false,
+  },
+  canEndGame: true,
 };
 
 // Maximum recent events to keep (for performance)
@@ -630,6 +683,88 @@ const useAppStore = create<AppStore>()(
       setVelocity: (velocity) => set({ velocity }),
       setActiveWeapon: (activeWeapon) => set({ activeWeapon }),
 
+      // Persistent game state actions
+      setDoorOpened: (door, opened) =>
+        set((state) => ({
+          doorsOpened: { ...state.doorsOpened, [door]: opened },
+        })),
+
+      setShardCollected: (room, collected) =>
+        set((state) => ({
+          shardsCollected: { ...state.shardsCollected, [room]: collected },
+        })),
+
+      setEntityVisible: (entity, visible) =>
+        set((state) => ({
+          entitiesVisible: { ...state.entitiesVisible, [entity]: visible },
+        })),
+
+      setGhostHits: (ghost, hits) =>
+        set((state) => ({
+          ghostsState: {
+            ...state.ghostsState,
+            hits: { ...state.ghostsState.hits, [ghost]: hits },
+          },
+        })),
+
+      setGhostDead: (ghost, dead) =>
+        set((state) => ({
+          ghostsState: {
+            ...state.ghostsState,
+            dead: { ...state.ghostsState.dead, [ghost]: dead },
+          },
+        })),
+
+      setGhostSpawned: (ghost, spawned) =>
+        set((state) => ({
+          ghostsState: {
+            ...state.ghostsState,
+            spawned: { ...state.ghostsState.spawned, [ghost]: spawned },
+          },
+        })),
+
+      setFirstPickupTaken: (taken) =>
+        set((state) => ({
+          pickupsState: { ...state.pickupsState, firstPickupTaken: taken },
+        })),
+
+      setPickupTaken: (pickupId, taken) =>
+        set((state) => ({
+          pickupsState: {
+            ...state.pickupsState,
+            pickupTaken: { ...state.pickupsState.pickupTaken, [pickupId]: taken },
+          },
+        })),
+
+      setPanelEnabled: (panel, enabled) =>
+        set((state) => ({
+          panelsEnabled: { ...state.panelsEnabled, [panel]: enabled },
+        })),
+
+      setCanEndGame: (can) => set({ canEndGame: can }),
+
+      resetGameState: () =>
+        set({
+          doorsOpened: {},
+          shardsCollected: {},
+          entitiesVisible: {},
+          ghostsState: {
+            hits: {},
+            dead: {},
+            spawned: {},
+          },
+          pickupsState: {
+            firstPickupTaken: false,
+            pickupTaken: {},
+          },
+          panelsEnabled: {
+            shoot: false,
+            shard: false,
+            exit: false,
+          },
+          canEndGame: true,
+        }),
+
       // Utility getters
       canMove: () => {
         const state = get();
@@ -748,6 +883,14 @@ const useAppStore = create<AppStore>()(
         // UI state that should persist
         gameStarted: state.gameStarted,
         position: state.position,
+        // Persistent game state
+        doorsOpened: state.doorsOpened,
+        shardsCollected: state.shardsCollected,
+        entitiesVisible: state.entitiesVisible,
+        ghostsState: state.ghostsState,
+        pickupsState: state.pickupsState,
+        panelsEnabled: state.panelsEnabled,
+        canEndGame: state.canEndGame,
       }),
     }
   )

@@ -648,16 +648,6 @@ const playTrack = (src: string) => {
   // THIS IS WHERE THE FUCKERY STARTS :)
   // IMPORTANT: All hooks must be called unconditionally at the top
   // Get game session state, UI state, and player state from Zustand store
-  const [doorOpened, setDoorOpened] = useState<boolean>(false); // Room 1 doors (1 & 2)
-  const [door2Opened, setDoor2Opened] = useState<boolean>(false); // Room 2 doors (3 & 4)
-  const [door3Opened, setDoor3Opened] = useState<boolean>(false); // Doors 5 & 6
-  const [door4Opened, setDoor4Opened] = useState<boolean>(false);
-  const [door5Opened, setDoor5Opened] = useState<boolean>(false); // Room 5 (doors 8 & 9)
-  const [door6Opened, setDoor6Opened] = useState<boolean>(false); // Room 6 (doors 10 & 11)
-  const [door7Opened, setDoor7Opened] = useState<boolean>(false); // Room 7 (doors 12 & 13)
-  // const [door8Opened, setDoor8Opened] = useState<boolean>(false);   // Room 8 (doors 14 & 15)
-  // const [door9Opened, setDoor9Opened] = useState<boolean>(false);   // Room 9 (doors 16 & 17)
-
   const {
     gameStarted,
     showGun,
@@ -672,7 +662,19 @@ const playTrack = (src: string) => {
     updatePosition,
     updateRotation,
     entities,
+    // Persistent game state from Zustand
+    doorsOpened,
+    setDoorOpened,
   } = useAppStore();
+
+  // Door state accessors (derived from Zustand)
+  const doorOpened = doorsOpened.door1 || false;
+  const door2Opened = doorsOpened.door2 || false;
+  const door3Opened = doorsOpened.door3 || false;
+  const door4Opened = doorsOpened.door4 || false;
+  const door5Opened = doorsOpened.door5 || false;
+  const door6Opened = doorsOpened.door6 || false;
+  const door7Opened = doorsOpened.door7 || false;
 // THESE BELOW ARE FE GHOSTS========================================================
   // const popRef = useRef<PopHandle | null>(null);
   // Refs for click-detection wrappers around the ghosts
@@ -684,27 +686,34 @@ const playTrack = (src: string) => {
   const ghost6Ref = useRef<THREE.Group | null>(null);
   const ghost7Ref = useRef<THREE.Group | null>(null);
 
-  // Local HP counters (3 hits to kill)
-  const [ghost1Hits, setGhost1Hits] = useState(0);
-  const [ghost2Hits, setGhost2Hits] = useState(0);
-  const [ghost1Dead, setGhost1Dead] = useState(false);
-  const [ghost2Dead, setGhost2Dead] = useState(false);
-  const [ghost3Dead, setGhost3Dead] = useState(false);
-  const [ghost4Dead, setGhost4Dead] = useState(false);
-  const [ghost5Dead, setGhost5Dead] = useState(false);
-  const [ghost6Dead, setGhost6Dead] = useState(false);
-  const [ghost7Dead, setGhost7Dead] = useState(false);
+  // Ghost state from Zustand
+  const {
+    ghostsState,
+    setGhostHits,
+    setGhostDead,
+    setGhostSpawned,
+  } = useAppStore();
+
+  // Ghost state accessors (derived from Zustand)
+  const ghost1Hits = ghostsState.hits.ghost1 || 0;
+  const ghost2Hits = ghostsState.hits.ghost2 || 0;
+  const ghost1Dead = ghostsState.dead.ghost1 || false;
+  const ghost2Dead = ghostsState.dead.ghost2 || false;
+  const ghost3Dead = ghostsState.dead.ghost3 || false;
+  const ghost4Dead = ghostsState.dead.ghost4 || false;
+  const ghost5Dead = ghostsState.dead.ghost5 || false;
+  const ghost6Dead = ghostsState.dead.ghost6 || false;
+  const ghost7Dead = ghostsState.dead.ghost7 || false;
 
   // --- Ghost spawn gating --- (v2)
-
   const GHOST4 = { x: 294, z: 346, radius: 10 };
   const GHOST7 = { x: 402, z: 322, radius: 10 };
 
-  const [ghost1Spawned, setGhost1Spawned] = useState(false);
-  const [ghost2Spawned, setGhost2Spawned] = useState(false);
-  const [ghost3Spawned, setGhost3Spawned] = useState(false);
-  const [ghost4Spawned, setGhost4Spawned] = useState(false);
-  const [ghost7Spawned, setGhost7Spawned] = useState(false);
+  const ghost1Spawned = ghostsState.spawned.ghost1 || false;
+  const ghost2Spawned = ghostsState.spawned.ghost2 || false;
+  const ghost3Spawned = ghostsState.spawned.ghost3 || false;
+  const ghost4Spawned = ghostsState.spawned.ghost4 || false;
+  const ghost7Spawned = ghostsState.spawned.ghost7 || false;
   const [ghostsPreloaded, setGhostsPreloaded] = useState(false);
 
 
@@ -722,31 +731,40 @@ const playTrack = (src: string) => {
     Math.hypot(playerPosition.x - GHOST7.x, playerPosition.z - GHOST7.z) <=
     GHOST7.radius;
 
-useEffect(() => {
-  if (ghostsPreloaded && !ghost1Spawned) setGhost1Spawned(true);
-}, [ghostsPreloaded, ghost1Spawned]);
+  // Pickup state from Zustand
+  const {
+    pickupsState,
+    setFirstPickupTaken,
+    setPickupTaken,
+  } = useAppStore();
+
+  const firstPickupTaken = pickupsState.firstPickupTaken;
+  const pickupTaken = pickupsState.pickupTaken;
 
 useEffect(() => {
-  if (ghostsPreloaded && !ghost2Spawned) setGhost2Spawned(true);
-}, [ghostsPreloaded, ghost2Spawned]);
+  if (ghostsPreloaded && !ghost1Spawned) setGhostSpawned("ghost1", true);
+}, [ghostsPreloaded, ghost1Spawned, setGhostSpawned]);
+
+useEffect(() => {
+  if (ghostsPreloaded && !ghost2Spawned) setGhostSpawned("ghost2", true);
+}, [ghostsPreloaded, ghost2Spawned, setGhostSpawned]);
 
 
   useEffect(() => {
-    if (ghostsPreloaded && !ghost3Spawned) setGhost3Spawned(true);
-  }, [ghostsPreloaded, ghost3Spawned]);
+    if (ghostsPreloaded && !ghost3Spawned) setGhostSpawned("ghost3", true);
+  }, [ghostsPreloaded, ghost3Spawned, setGhostSpawned]);
   useEffect(() => {
-    if (!ghost4Spawned && nearGhost4) setGhost4Spawned(true);
-  }, [nearGhost4, ghost4Spawned]);
+    if (!ghost4Spawned && nearGhost4) setGhostSpawned("ghost4", true);
+  }, [nearGhost4, ghost4Spawned, setGhostSpawned]);
 
 
 
   useEffect(() => {
-    if (ghostsPreloaded && !ghost7Spawned) setGhost7Spawned(true);
-  }, [ghostsPreloaded, ghost7Spawned]);;
+    if (ghostsPreloaded && !ghost7Spawned) setGhostSpawned("ghost7", true);
+  }, [ghostsPreloaded, ghost7Spawned, setGhostSpawned]);;
 
   // First pickup: equip gun only (no ammo), at (399, 392)
   const FIRST_PICKUP = { x: 399, z: 392 };
-  const [firstPickupTaken, setFirstPickupTaken] = useState(false);
 
   // within RANGE of first pickup, and gun not yet shown
   const isNearFirstPickup =
@@ -762,14 +780,6 @@ useEffect(() => {
     { id: "P2", x: 369, z: 277 },
     { id: "P3", x: 338, z: 322 },
   ];
-
-  const [pickupTaken, setPickupTaken] = useState<Record<Pickup["id"], boolean>>(
-    {
-      P1: false,
-      P2: false,
-      P3: false,
-    }
-  );
 
   const PICK_RANGE = 2.0;
   const activePickup = (() => {
@@ -796,30 +806,49 @@ useEffect(() => {
   const { collectShard } = useCollectShard();
   const { refetch: refetchGameData } = useGameData();
 
-  // Track shard collection per room (session-local UI state)
-  const [room1ShardCollected, setRoom1ShardCollected] = useState(false);
-  const [room2ShardCollected, setRoom2ShardCollected] = useState(false);
-  const [room3ShardCollected, setRoom3ShardCollected] = useState(false); // shard for room 3
-  const [room4ShardCollected, setRoom4ShardCollected] = useState(false); // shard for room 4
-  const [room5ShardCollected, setRoom5ShardCollected] = useState(false); // shard for room 5
-  const [room6ShardCollected, setRoom6ShardCollected] = useState(false); // shard for room 6
-  const [room7ShardCollected, setRoom7ShardCollected] = useState(false); // shard for room 7
+  // Shard collection, entity visibility, panel state from Zustand
+  const {
+    shardsCollected,
+    setShardCollected,
+    entitiesVisible,
+    setEntityVisible,
+    panelsEnabled,
+    setPanelEnabled,
+    canEndGame,
+    setCanEndGame,
+  } = useAppStore();
 
-  // State for entity cubes, THESE ARE THE ONCHAIN ENEMIES
-  const [entityCubeVisible, setEntityCubeVisible] = useState<boolean>(false); // room 1
+  // Shard collection state accessors (derived from Zustand)
+  const room1ShardCollected = shardsCollected.room1 || false;
+  const room2ShardCollected = shardsCollected.room2 || false;
+  const room3ShardCollected = shardsCollected.room3 || false;
+  const room4ShardCollected = shardsCollected.room4 || false;
+  const room5ShardCollected = shardsCollected.room5 || false;
+  const room6ShardCollected = shardsCollected.room6 || false;
+  const room7ShardCollected = shardsCollected.room7 || false;
+
+  // Entity visibility state accessors (derived from Zustand)
+  const entityCubeVisible = entitiesVisible.entity1 || false;
+  const entityCube2Visible = entitiesVisible.entity2 || false;
+  const entityCube3Visible = entitiesVisible.entity3 || false;
+  const entityCube4Visible = entitiesVisible.entity4 || false;
+  const entityCube5Visible = entitiesVisible.entity5 || false;
+  const entityCube6Visible = entitiesVisible.entity6 || false;
+  const entityCube7Visible = entitiesVisible.entity7 || false;
+
+  // Panel enabled state accessors (derived from Zustand)
+  const shootPanelEnabled = panelsEnabled.shoot;
+  const shardPanelEnabled = panelsEnabled.shard;
+  const exitPanelEnabled = panelsEnabled.exit;
+
+  // Cube positions (static)
   const [cubePosition] = useState<[number, number, number]>([389, 1.5, 308]);
-  const [entityCube2Visible, setEntityCube2Visible] = useState<boolean>(false); // room 2
   const [cube2Position] = useState<[number, number, number]>([343, 1.5, 299]);
-  const [entityCube3Visible, setEntityCube3Visible] = useState<boolean>(false);
-  const [cube3Position] = useState<[number, number, number]>([349, 1.5, 393]); // pick a spot in R3z
-  const [entityCube4Visible, setEntityCube4Visible] = useState<boolean>(false);
-  const [cube4Position] = useState<[number, number, number]>([322, 1.5, 372]); // spawn entity R4
-  const [entityCube5Visible, setEntityCube5Visible] = useState<boolean>(false);
-  const [cube5Position] = useState<[number, number, number]>([300, 1.5, 350]); // spawn entity R5
-  const [entityCube6Visible, setEntityCube6Visible] = useState<boolean>(false);
-  const [cube6Position] = useState<[number, number, number]>([274, 1.5, 334]); // spawn entity R6
-  const [entityCube7Visible, setEntityCube7Visible] = useState<boolean>(false);
-  const [cube7Position] = useState<[number, number, number]>([277, 1.5, 295]); // spawn entity R7
+  const [cube3Position] = useState<[number, number, number]>([349, 1.5, 393]);
+  const [cube4Position] = useState<[number, number, number]>([322, 1.5, 372]);
+  const [cube5Position] = useState<[number, number, number]>([300, 1.5, 350]);
+  const [cube6Position] = useState<[number, number, number]>([274, 1.5, 334]);
+  const [cube7Position] = useState<[number, number, number]>([277, 1.5, 295]);
 
   // Local VFX/UI state, CONTAINS SOME FE, REST E,X,Q AND B ARE THE ONCHAIN FUNCTIONS
   const [aimingAtEntity, setAimingAtEntity] = useState(false);
@@ -835,14 +864,8 @@ useEffect(() => {
   const [shardPromptKey, setShardPromptKey] = useState<number>(0);
   const [qPressed, setQPressed] = useState<boolean>(false);
   const [bPressed, setBPressed] = useState<boolean>(false);
-
-const [canEndGame, setCanEndGame] = useState<boolean>(true);
-
   const [showExitPrompt, setShowExitPrompt] = useState<boolean>(false);
   const [exitPromptKey, setExitPromptKey] = useState<number>(0);
-  const [shootPanelEnabled, setShootPanelEnabled] = useState<boolean>(false);
-  const [shardPanelEnabled, setShardPanelEnabled] = useState<boolean>(false);
-  const [exitPanelEnabled, setExitPanelEnabled] = useState<boolean>(false);
   const [promptKey, setPromptKey] = useState<number>(0);
 
   const { endGame } = useEndGame();
@@ -883,15 +906,15 @@ useEffect(() => {
         const target = entity[0];
         if (!target.is_alive || Number(target.health) <= 0) {
           console.log("Room 1 entity died, hiding cube");
-          setEntityCubeVisible(false);
-          setShootPanelEnabled(false);
-          if (!room1ShardCollected) setShardPanelEnabled(true); // enable only if not collected yet
+          setEntityVisible("entity1", false);
+          setPanelEnabled("shoot", false);
+          if (!room1ShardCollected) setPanelEnabled("shard", true); // enable only if not collected yet
         } else {
-          setShardPanelEnabled(false);
+          setPanelEnabled("shard", false);
         }
       }
     }
-  }, [entities, entityCubeVisible, room1ShardCollected]);
+  }, [entities, entityCubeVisible, room1ShardCollected, setEntityVisible, setPanelEnabled]);
 
   // Room 2: hide cube when entity dies
   useEffect(() => {
@@ -901,15 +924,15 @@ useEffect(() => {
       const target = entity[0];
       if (!target.is_alive || Number(target.health) <= 0) {
         console.log("Room 2 entity died, hiding cube");
-        setEntityCube2Visible(false);
-        setShootPanelEnabled(false);
-        if (!room2ShardCollected) setShardPanelEnabled(true);
+        setEntityVisible("entity2", false);
+        setPanelEnabled("shoot", false);
+        if (!room2ShardCollected) setPanelEnabled("shard", true);
       } else {
-        setShardPanelEnabled(false);
+        setPanelEnabled("shard", false);
       }
     }
     // NOTE: if list is empty temporarily after enterDoor, do nothing
-  }, [entities, entityCube2Visible, room2ShardCollected]);
+  }, [entities, entityCube2Visible, room2ShardCollected, setEntityVisible, setPanelEnabled]);
 
   // Room 3: hide cube when entity dies
   useEffect(() => {
@@ -919,15 +942,15 @@ useEffect(() => {
       const target = entity[0];
       if (!target.is_alive || Number(target.health) <= 0) {
         console.log("Room 3 entity died, hiding cube");
-        setEntityCube3Visible(false);
-        setShootPanelEnabled(false);
-        if (!room3ShardCollected) setShardPanelEnabled(true);
+        setEntityVisible("entity3", false);
+        setPanelEnabled("shoot", false);
+        if (!room3ShardCollected) setPanelEnabled("shard", true);
       } else {
-        setShardPanelEnabled(false);
+        setPanelEnabled("shard", false);
       }
     }
     // NOTE: if list is empty temporarily after enterDoor, do nothing
-  }, [entities, entityCube3Visible, room3ShardCollected]);
+  }, [entities, entityCube3Visible, room3ShardCollected, setEntityVisible, setPanelEnabled]);
 
   // Room 4: hide cube when entity dies
   useEffect(() => {
@@ -937,15 +960,15 @@ useEffect(() => {
       const target = entity[0];
       if (!target.is_alive || Number(target.health) <= 0) {
         console.log("Room 4 entity died, hiding cube");
-        setEntityCube4Visible(false);
-        setShootPanelEnabled(false);
-        if (!room4ShardCollected) setShardPanelEnabled(true);
+        setEntityVisible("entity4", false);
+        setPanelEnabled("shoot", false);
+        if (!room4ShardCollected) setPanelEnabled("shard", true);
       } else {
-        setShardPanelEnabled(false);
+        setPanelEnabled("shard", false);
       }
     }
     // NOTE: if list is empty temporarily after enterDoor, do nothing
-  }, [entities, entityCube4Visible, room4ShardCollected]);
+  }, [entities, entityCube4Visible, room4ShardCollected, setEntityVisible, setPanelEnabled]);
 
   // Room 5: hide cube when entity dies
   useEffect(() => {
@@ -955,15 +978,15 @@ useEffect(() => {
       const target = entity[0];
       if (!target.is_alive || Number(target.health) <= 0) {
         console.log("Room 5 entity died, hiding cube");
-        setEntityCube5Visible(false);
-        setShootPanelEnabled(false);
-        if (!room5ShardCollected) setShardPanelEnabled(true);
+        setEntityVisible("entity5", false);
+        setPanelEnabled("shoot", false);
+        if (!room5ShardCollected) setPanelEnabled("shard", true);
       } else {
-        setShardPanelEnabled(false);
+        setPanelEnabled("shard", false);
       }
     }
     // NOTE: if list is empty temporarily after enterDoor, do nothing
-  }, [entities, entityCube5Visible, room5ShardCollected]);
+  }, [entities, entityCube5Visible, room5ShardCollected, setEntityVisible, setPanelEnabled]);
 
   // Room 6: hide cube when entity dies
   useEffect(() => {
@@ -973,15 +996,15 @@ useEffect(() => {
       const target = entity[0];
       if (!target.is_alive || Number(target.health) <= 0) {
         console.log("Room 6 entity died, hiding cube");
-        setEntityCube6Visible(false);
-        setShootPanelEnabled(false);
-        if (!room6ShardCollected) setShardPanelEnabled(true);
+        setEntityVisible("entity6", false);
+        setPanelEnabled("shoot", false);
+        if (!room6ShardCollected) setPanelEnabled("shard", true);
       } else {
-        setShardPanelEnabled(false);
+        setPanelEnabled("shard", false);
       }
     }
     // NOTE: if list is empty temporarily after enterDoor, do nothing
-  }, [entities, entityCube6Visible, room6ShardCollected]);
+  }, [entities, entityCube6Visible, room6ShardCollected, setEntityVisible, setPanelEnabled]);
 
   // Room 7: hide cube when entity dies
   useEffect(() => {
@@ -991,15 +1014,15 @@ useEffect(() => {
       const target = entity[0];
       if (!target.is_alive || Number(target.health) <= 0) {
         console.log("Room 7 entity died, hiding cube");
-        setEntityCube7Visible(false);
-        setShootPanelEnabled(false);
-        if (!room7ShardCollected) setShardPanelEnabled(true);
+        setEntityVisible("entity7", false);
+        setPanelEnabled("shoot", false);
+        if (!room7ShardCollected) setPanelEnabled("shard", true);
       } else {
-        setShardPanelEnabled(false);
+        setPanelEnabled("shard", false);
       }
     }
     // NOTE: if list is empty temporarily after enterDoor, do nothing
-  }, [entities, entityCube7Visible, room7ShardCollected]);
+  }, [entities, entityCube7Visible, room7ShardCollected, setEntityVisible, setPanelEnabled]);
 // IF THE PLAYER IS NEAR THESE COORDINATES, THE DOOR MAPPED TO THOSE COORDINATES WOULD BE ENABLED IN THE UI.
 // THEN PRESS E TO ENTER AND ENTUTY SPAWNS
   // Helper: door proximity
@@ -1157,7 +1180,7 @@ useEffect(() => {
           window.dispatchEvent(
             new CustomEvent("gun:addAmmo", { detail: { amount: 10 } })
           );
-          setPickupTaken((prev) => ({ ...prev, [p.id]: true }));
+          setPickupTaken(p.id, true);
           return;
         }
 
@@ -1239,31 +1262,31 @@ useEffect(() => {
                   : "1";
 
               if (targetRoomId === "1") {
-                setDoorOpened(true);
-                setTimeout(() => setEntityCubeVisible(true), 1000);
+                setDoorOpened("door1", true);
+                setTimeout(() => setEntityVisible("entity1", true), 1000);
               } else if (targetRoomId === "2") {
-                setDoor2Opened(true);
-                setTimeout(() => setEntityCube2Visible(true), 1000);
+                setDoorOpened("door2", true);
+                setTimeout(() => setEntityVisible("entity2", true), 1000);
               } else if (targetRoomId === "3") {
-                setDoor3Opened(true);
-                setTimeout(() => setEntityCube3Visible(true), 1000);
+                setDoorOpened("door3", true);
+                setTimeout(() => setEntityVisible("entity3", true), 1000);
               } else if (targetRoomId === "4") {
-                setDoor4Opened(true);
-                setTimeout(() => setEntityCube4Visible(true), 1000);
+                setDoorOpened("door4", true);
+                setTimeout(() => setEntityVisible("entity4", true), 1000);
               } else if (targetRoomId === "5") {
-                setDoor5Opened(true);
-                setTimeout(() => setEntityCube5Visible(true), 1000);
+                setDoorOpened("door5", true);
+                setTimeout(() => setEntityVisible("entity5", true), 1000);
               } else if (targetRoomId === "6") {
-                setDoor6Opened(true);
-                setTimeout(() => setEntityCube6Visible(true), 1000);
+                setDoorOpened("door6", true);
+                setTimeout(() => setEntityVisible("entity6", true), 1000);
               } else if (targetRoomId === "7") {
-                setDoor7Opened(true);
-                setTimeout(() => setEntityCube7Visible(true), 1000);
+                setDoorOpened("door7", true);
+                setTimeout(() => setEntityVisible("entity7", true), 1000);
               }
 
-              setShardPanelEnabled(false); // shard stays disabled until kill
-              setExitPanelEnabled(false); // exit stays disabled until shard is collected
-              setShootPanelEnabled(true); // (ensure F panel is enabled on entry)
+              setPanelEnabled("shard", false); // shard stays disabled until kill
+              setPanelEnabled("exit", false); // exit stays disabled until shard is collected
+              setPanelEnabled("shoot", true); // (ensure F panel is enabled on entry)
             } else {
               console.error("Failed to open door:", result.error);
             }
@@ -1345,16 +1368,16 @@ if (event.key.toLowerCase() === "b") {
         collectShard(shardId).then((result) => {
           if (result.success) {
             console.log("✅ Shard collected");
-            if (targetRoomId === "1") setRoom1ShardCollected(true);
-            else if (targetRoomId === "2") setRoom2ShardCollected(true);
-            else if (targetRoomId === "3") setRoom3ShardCollected(true);
-            else if (targetRoomId === "4") setRoom4ShardCollected(true);
-            else if (targetRoomId === "5") setRoom5ShardCollected(true);
-            else if (targetRoomId === "6") setRoom6ShardCollected(true);
-            else setRoom7ShardCollected(true);
+            if (targetRoomId === "1") setShardCollected("room1", true);
+            else if (targetRoomId === "2") setShardCollected("room2", true);
+            else if (targetRoomId === "3") setShardCollected("room3", true);
+            else if (targetRoomId === "4") setShardCollected("room4", true);
+            else if (targetRoomId === "5") setShardCollected("room5", true);
+            else if (targetRoomId === "6") setShardCollected("room6", true);
+            else setShardCollected("room7", true);
 
-            setExitPanelEnabled(true);
-            setShardPanelEnabled(false);
+            setPanelEnabled("exit", true);
+            setPanelEnabled("shard", false);
             refetchGameData();
           }
         });
@@ -1418,10 +1441,10 @@ if (event.key.toLowerCase() === "b") {
                   return;
                 }
 
-                if (roomId === "1") setDoorOpened(true);
-                else if (roomId === "2") setDoor2Opened(true);
-                else if (roomId === "3") setDoor3Opened(true);
-                else setDoor4Opened(true);
+                if (roomId === "1") setDoorOpened("door1", true);
+                else if (roomId === "2") setDoorOpened("door2", true);
+                else if (roomId === "3") setDoorOpened("door3", true);
+                else setDoorOpened("door4", true);
 
                 // choose door id for exit (1→1/2, 2→3/4, 3→5/6, 4→7, 5→8/9)
                 const here = isAtDoorPosition();
@@ -1455,7 +1478,7 @@ if (event.key.toLowerCase() === "b") {
                   else doorIdForExit = "12";
                 }
 
-                setExitPanelEnabled(false); // hide exit panel once used
+                setPanelEnabled("exit", false); // hide exit panel once used
 
                 exitDoor(doorIdForExit)
                 .then((res) => {
@@ -1475,13 +1498,13 @@ if (event.key.toLowerCase() === "b") {
             return;
           }
 
-          if (roomId === "1") setDoorOpened(true);
-          else if (roomId === "2") setDoor2Opened(true);
-          else if (roomId === "3") setDoor3Opened(true);
-          else if (roomId === "4") setDoor4Opened(true);
-          else if (roomId === "5") setDoor5Opened(true);
-          else if (roomId === "6") setDoor6Opened(true);
-          else setDoor7Opened(true);
+          if (roomId === "1") setDoorOpened("door1", true);
+          else if (roomId === "2") setDoorOpened("door2", true);
+          else if (roomId === "3") setDoorOpened("door3", true);
+          else if (roomId === "4") setDoorOpened("door4", true);
+          else if (roomId === "5") setDoorOpened("door5", true);
+          else if (roomId === "6") setDoorOpened("door6", true);
+          else setDoorOpened("door7", true);
 
           // choose door id for exit (1→1/2, 2→3/4, 3→5/6, 4→7)
           const here = isAtDoorPosition();
@@ -1515,7 +1538,7 @@ if (event.key.toLowerCase() === "b") {
             else doorIdForExit = "12";
           }
 
-          setExitPanelEnabled(false);
+          setPanelEnabled("exit", false);
 
           exitDoor(doorIdForExit)
           .then((res) => {
@@ -1619,17 +1642,13 @@ if (event.key.toLowerCase() === "b") {
       setTimeout(() => setShowShootPrompt(false), 350);
 
       if (which === 1) {
-        setGhost1Hits((h) => {
-          const n = h + 1;
-          if (n >= 3) setGhost1Dead(true);
-          return n;
-        });
+        const n = ghost1Hits + 1;
+        setGhostHits("ghost1", n);
+        if (n >= 3) setGhostDead("ghost1", true);
       } else {
-        setGhost2Hits((h) => {
-          const n = h + 1;
-          if (n >= 3) setGhost2Dead(true);
-          return n;
-        });
+        const n = ghost2Hits + 1;
+        setGhostHits("ghost2", n);
+        if (n >= 3) setGhostDead("ghost2", true);
       }
 // DO NOT CHANGE
       // Optional: add a little blood puff at the hit point
@@ -1732,15 +1751,15 @@ if (event.key.toLowerCase() === "b") {
               Number(updated[0].health) <= 0;
 
             if (dead) {
-              if (targetRoomId === "1") setEntityCubeVisible(false);
-              else if (targetRoomId === "2") setEntityCube2Visible(false);
-              else if (targetRoomId === "3") setEntityCube3Visible(false);
-              else if (targetRoomId === "4") setEntityCube4Visible(false);
-              else if (targetRoomId === "5") setEntityCube5Visible(false);
-              else if (targetRoomId === "6") setEntityCube6Visible(false);
-              else if (targetRoomId === "7") setEntityCube7Visible(false);
+              if (targetRoomId === "1") setEntityVisible("entity1", false);
+              else if (targetRoomId === "2") setEntityVisible("entity2", false);
+              else if (targetRoomId === "3") setEntityVisible("entity3", false);
+              else if (targetRoomId === "4") setEntityVisible("entity4", false);
+              else if (targetRoomId === "5") setEntityVisible("entity5", false);
+              else if (targetRoomId === "6") setEntityVisible("entity6", false);
+              else if (targetRoomId === "7") setEntityVisible("entity7", false);
 
-              setShootPanelEnabled(false);
+              setPanelEnabled("shoot", false);
 
               const shardAlready =
                 targetRoomId === "1" ? room1ShardCollected
@@ -1751,7 +1770,7 @@ if (event.key.toLowerCase() === "b") {
                 : targetRoomId === "6" ? room6ShardCollected
                 : room7ShardCollected;
 
-              if (!shardAlready) setShardPanelEnabled(true);
+              if (!shardAlready) setPanelEnabled("shard", true);
             }
           }, 1000);
 
@@ -2094,7 +2113,7 @@ shadow-mapSize-height={2048}
               yawOffset={-1}
               scale={1.5}
               // collideRadius={2.7}
-              onVanish={() => setGhost4Dead(true)}
+              onVanish={() => setGhostDead("ghost4", true)}
             />
           </group>
         )}
@@ -2107,7 +2126,7 @@ shadow-mapSize-height={2048}
               speed={2.0}
               yawOffset={-1}
               scale={2} // change if you want bigger/smaller
-              onVanish={() => setGhost5Dead(true)}
+              onVanish={() => setGhostDead("ghost5", true)}
             />
           </group>
         )}
@@ -2120,7 +2139,7 @@ shadow-mapSize-height={2048}
               speed={2.0}
               yawOffset={-1}
               scale={2} // change if you want bigger/smaller
-              onVanish={() => setGhost6Dead(true)}
+              onVanish={() => setGhostDead("ghost6", true)}
             />
           </group>
         )}
@@ -2135,7 +2154,7 @@ shadow-mapSize-height={2048}
               yawOffset={-1}
               scale={1.5}
               // collideRadius={2.7}
-              onVanish={() => setGhost7Dead(true)}
+              onVanish={() => setGhostDead("ghost7", true)}
             />
           </group>
         )}
