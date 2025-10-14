@@ -1,8 +1,8 @@
 {
   "world": {
     "class_hash": "0x13d92333361bb7049c1232c0a5404e2c19082ededc3a73d75cb33fa952adec7",
-    "address": "0x6eec5002d554dae100cdc846a7dfee48bab680f78b7463658da7ed241e2f2a9",
-    "seed": "blockrooms11",
+    "address": "0x57eb357d996ef85611fdd58fd47cbaec596c9d7464651acb712bdfa321b4561",
+    "seed": "blockrooms1",
     "name": "blockrooms",
     "entrypoints": [
       "uuid",
@@ -1328,7 +1328,7 @@
   },
   "contracts": [
     {
-      "address": "0x20ccd706285e4b09d0a95c612e3e2d45f5d0e6684df48c93e68c4a4a7231ccf",
+      "address": "0x29b0b475046e527dbcf273f4e31bc1f9292bae388b3cbb586a5306ebdf5fe33",
       "class_hash": "0x2cd77a8fcebd44d4ae58a78d607c90d144ea63500d93d11e8eecf3bc8d01277",
       "abi": [
         {

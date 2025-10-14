@@ -48,7 +48,8 @@ export const useStartGame = () => {
                        !player?.game_active && 
                        gamePhase !== GamePhase.ACTIVE && 
                        !actionInProgress;
-
+  console.log("CAN START",canStartGame);
+  
   const startGame = useCallback(async (): Promise<StartGameResult> => {
     console.log("🎮 Starting game process...");
     console.log("State check:", {

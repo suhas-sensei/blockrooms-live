@@ -7,8 +7,7 @@ import { useInitializePlayer } from "../../dojo/hooks/useInitializePlayer";
 import { useStartGame } from "../../dojo/hooks/useStartGame";
 import { TutorialVideo } from "./TutorialVideo";
 import { useEndGame } from "../../dojo/hooks/useEndGame";
-import { NetworkType, setStoredNetwork, getStoredNetwork } from "../../config/networkConfig";
-
+ 
 
 type Move = "up" | "down" | "left" | "right";
 
@@ -249,18 +248,9 @@ const pollRefetchUntilInactive = async (
   const gameAlreadyActive =
     gamePhase === GamePhase.ACTIVE || (player as any)?.game_active;
 
-const handlePlayForFree = async (network: NetworkType): Promise<void> => {
+const handlePlayForFree = async ( ): Promise<void> => {
   await ensureBgm();
-
-  // Check if we need to switch networks
-  const currentNetwork = getStoredNetwork();
-  if (currentNetwork !== network) {
-    // Store the selected network and reload the page
-    setStoredNetwork(network);
-    window.location.reload();
-    return;
-  }
-
+ 
   // Step 1: Connect wallet if not connected
   if (!isConnected) {
     console.log('🔌 Connecting wallet...');
@@ -306,7 +296,9 @@ const handlePlayForFree = async (network: NetworkType): Promise<void> => {
     console.log('🔄 Ending previous session...');
     try {
       await endGame();
-    } catch {
+    } catch(e) {
+      console.log(e);
+      
       // ignore; proceed to refresh and start
     }
 
@@ -395,76 +387,11 @@ const handlePlayForFree = async (network: NetworkType): Promise<void> => {
           
 
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {/* PLAY ON TESTNET — handles everything on sepolia */}
-            <button
-              onClick={() => handlePlayForFree('sepolia')}
-              disabled={isLoading}
-              onMouseEnter={() => setHovered(0)}
-              onMouseLeave={() => setHovered(null)}
-              style={{
-                all: "unset",
-                cursor: isLoading ? "not-allowed" : "pointer",
-                background: hovered === 0 ? "rgba(0, 0, 0, 0.9)" : "rgba(0, 0, 0, 0.7)",
-                border: "2px solid rgba(255, 255, 255, 0.2)",
-                borderRadius: 12,
-                padding: "16px 24px",
-                display: "flex",
-                alignItems: "center",
-                gap: 16,
-                transition: "all 0.3s ease",
-                opacity: isLoading ? 0.6 : 1,
-                boxShadow: hovered === 0
-                  ? "0 8px 24px rgba(0, 0, 0, 0.5)"
-                  : "0 4px 12px rgba(0, 0, 0, 0.3)",
-                transform: hovered === 0 ? "translateY(-2px)" : "translateY(0)",
-              }}
-            >
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                style={{ flexShrink: 0 }}
-              >
-                <path
-                  d="M12 2L2 7L12 12L22 7L12 2Z"
-                  stroke="white"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M2 17L12 22L22 17"
-                  stroke="white"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M2 12L12 17L22 12"
-                  stroke="white"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              <span
-                style={{
-                  color: "white",
-                  fontSize: 16,
-                  fontWeight: 600,
-                  letterSpacing: 0.5,
-                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-                }}
-              >
-                {isLoading ? "LOADING..." : "PLAY FOR FREE (TESTNET)"}
-              </span>
-            </button>
+             
 
             {/* PLAY ON MAINNET — handles everything on mainnet */}
             <button
-              onClick={() => handlePlayForFree('mainnet')}
+              onClick={() => handlePlayForFree()}
               disabled={isLoading}
               onMouseEnter={() => setHovered(1)}
               onMouseLeave={() => setHovered(null)}
