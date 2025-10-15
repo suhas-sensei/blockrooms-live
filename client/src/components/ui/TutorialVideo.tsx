@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 type Props = {
   onEnded: () => void;
@@ -8,6 +8,7 @@ type Props = {
 export function TutorialVideo({ onEnded, onError }: Props) {
   const ref = useRef<HTMLVideoElement | null>(null);
   const bgRef = useRef<HTMLVideoElement | null>(null);
+  const [showSkipText, setShowSkipText] = useState(false);
 
   useEffect(() => {
     const v = ref.current;
@@ -37,8 +38,15 @@ export function TutorialVideo({ onEnded, onError }: Props) {
     v.addEventListener('seeked', syncVideos);
 
     const t = setTimeout(tryPlay, 0);
+
+    // Show skip text after 3 seconds
+    const skipTextTimer = setTimeout(() => {
+      setShowSkipText(true);
+    }, 3000);
+
     return () => {
       clearTimeout(t);
+      clearTimeout(skipTextTimer);
       v.removeEventListener('timeupdate', syncVideos);
       v.removeEventListener('play', () => bgV.play());
       v.removeEventListener('pause', () => bgV.pause());
@@ -59,6 +67,40 @@ export function TutorialVideo({ onEnded, onError }: Props) {
         overflow: "hidden",
       }}
     >
+      {/* Skip text */}
+      {showSkipText && (
+        <div
+          style={{
+            position: "absolute",
+            top: "30px",
+            left: "30px",
+            color: "white",
+            fontSize: "16px",
+            fontFamily: "'Courier New', monospace",
+            letterSpacing: "1px",
+            textTransform: "uppercase",
+            zIndex: 10,
+            opacity: 0.8,
+            animation: "fadeIn 0.5s ease-in",
+            textShadow: "0 2px 10px rgba(0, 0, 0, 0.8)",
+          }}
+        >
+          <style>{`
+            @keyframes fadeIn {
+              from {
+                opacity: 0;
+                transform: translateY(-10px);
+              }
+              to {
+                opacity: 0.8;
+                transform: translateY(0);
+              }
+            }
+          `}</style>
+          Press ESC to skip
+        </div>
+      )}
+
       {/* Blurred background video */}
       <video
         ref={bgRef}
