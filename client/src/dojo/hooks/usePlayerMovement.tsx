@@ -156,7 +156,7 @@ export const usePlayerMovement = (): UsePlayerMovementReturn => {
   // Enable movement transactions with delay and session verification
   useEffect(() => {
     if (gamePhase === GamePhase.ACTIVE && player?.game_active) {
-      const currentSessionId = player.current_session_id;
+      const currentSessionId = Number(player.current_session_id);
 
       // Check if this is a NEW session (different from last known) OR if we just reconnected
       const isNewSession = lastKnownSessionId.current !== currentSessionId;
@@ -217,7 +217,7 @@ export const usePlayerMovement = (): UsePlayerMovementReturn => {
         to: currentPos,
         originalDelta: { deltaX, deltaY },
         contractDelta: { contractDeltaX, contractDeltaY },
-        sessionId: player.current_session_id,
+        sessionId: Number(player.current_session_id),
         gameActive: player.game_active
       });
       processBoundaryCrossing(contractDeltaX, contractDeltaY, deltaX, deltaY);
