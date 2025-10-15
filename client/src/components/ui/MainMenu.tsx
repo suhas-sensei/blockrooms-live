@@ -7,6 +7,7 @@ import { useInitializePlayer } from "../../dojo/hooks/useInitializePlayer";
 import { useStartGame } from "../../dojo/hooks/useStartGame";
 import { TutorialVideo } from "./TutorialVideo";
 import { useEndGame } from "../../dojo/hooks/useEndGame";
+import { LoadingScreen } from "./LoadingScreen";
  
 
 type Move = "up" | "down" | "left" | "right";
@@ -462,36 +463,15 @@ const handlePlayForFree = async ( ): Promise<void> => {
         />
       )}
 
-      {/* Black screen overlay (4 seconds) */}
+      {/* Loading screen with glitchy effect (4 seconds) */}
       {showBlackScreen && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "black",
-            zIndex: 9999,
+        <LoadingScreen
+          duration={4000}
+          onComplete={() => {
+            setShowBlackScreen(false);
+            setShowTutorialVideo(true);
           }}
-        >
-          <style>{`
-            @keyframes blink {
-              0%, 100% { opacity: 1; }
-              50% { opacity: 0.3; }
-            }
-          `}</style>
-          <div
-            style={{
-              position: "absolute",
-              bottom: "40px",
-              left: "40px",
-              color: "white",
-              fontFamily: "monospace",
-              fontSize: "18px",
-              animation: "blink 1.5s ease-in-out infinite",
-            }}
-          >
-            loading...
-          </div>
-        </div>
+        />
       )}
 
       {/* Tutorial video after black screen */}
