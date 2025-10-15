@@ -24,7 +24,7 @@ export const useMovePlayer = () => {
   const { status } = useStarknetConnect();
   const { refetch: refetchPlayer } = useGameData();
   
-  const { 
+  const {
     setError,
     setActionInProgress,
     setLastTransaction,
@@ -32,6 +32,7 @@ export const useMovePlayer = () => {
     actionInProgress,
     gamePhase,
     player,
+    isPlayerInitialized,
     canMove
   } = useAppStore();
 
@@ -54,6 +55,14 @@ export const useMovePlayer = () => {
       return { success: false, error };
     }
 
+    // Check if player is initialized and game is active
+    if (!isPlayerInitialized || gamePhase !== GamePhase.ACTIVE) {
+      const error = "Game is not active or player not initialized";
+      setState(prev => ({ ...prev, error }));
+      setError(error);
+      return { success: false, error };
+    }
+
     // Check if player can move
     if (!canMove()) {
       const error = "Cannot move at this time";
@@ -62,16 +71,9 @@ export const useMovePlayer = () => {
       return { success: false, error };
     }
 
-    // Check if player exists and game is active
-    if (!player || gamePhase !== GamePhase.ACTIVE) {
-      const error = "Game is not active";
-      setState(prev => ({ ...prev, error }));
-      setError(error);
-      return { success: false, error };
-    }
-
     // Verify on-chain game session is active (prevent old session interference)
-    if (!player.game_active) {
+    // Only check if player data is available, otherwise trust isPlayerInitialized
+    if (player && !player.game_active) {
       const error = "Game session is not active. Please start a new game.";
       setState(prev => ({ ...prev, error }));
       setError(error);
@@ -150,6 +152,7 @@ export const useMovePlayer = () => {
     setLoading,
     player,
     gamePhase,
+    isPlayerInitialized,
     canMove
   ]);
 
