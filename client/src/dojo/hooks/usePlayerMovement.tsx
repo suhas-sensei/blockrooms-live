@@ -11,14 +11,17 @@ interface UsePlayerMovementReturn {
 }
 
 export const usePlayerMovement = (): UsePlayerMovementReturn => {
-  const { position, updatePosition } = useAppStore();
+  const { position, updatePosition, gamePhase, player } = useAppStore();
   const { movePlayer, isLoading, error } = useMovePlayer();
-  
-  
+
+
   const lastVerifiedPosition = useRef<{ x: number; z: number }>({ x: 400, z: 400 });
   const isProcessingBoundary = useRef<boolean>(false);
-  
-  
+  const movementEnabled = useRef<boolean>(false);
+  const gameStartTime = useRef<number | null>(null);
+  const lastKnownSessionId = useRef<number | null>(null);
+
+
   const [showTransactionPopup, setShowTransactionPopup] = useState(false);
   const [transactionError, setTransactionError] = useState<string | null>(null);
 
@@ -150,23 +153,76 @@ export const usePlayerMovement = (): UsePlayerMovementReturn => {
     }
   }, [movePlayer, handleTransactionSuccess, handleTransactionFailure]);
 
-  
+  // Enable movement transactions with delay and session verification
   useEffect(() => {
-    if (isProcessingBoundary.current) return;
+    if (gamePhase === GamePhase.ACTIVE && player?.game_active) {
+      const currentSessionId = player.current_session_id;
+
+      // Check if this is a NEW session (different from last known) OR if we just reconnected
+      const isNewSession = lastKnownSessionId.current !== currentSessionId;
+      const isReconnecting = lastKnownSessionId.current === null && currentSessionId > 0;
+
+      if (isNewSession || isReconnecting || !gameStartTime.current) {
+        const delayTime = isReconnecting ? 3000 : 10000; // Shorter delay on reconnect
+        console.log(`🎮 ${isReconnecting ? 'Reconnecting to' : 'New'} game session, enabling movement in ${delayTime/1000}s...`);
+        console.log(`   Session ID: ${currentSessionId}, Game Active: ${player.game_active}`);
+
+        lastKnownSessionId.current = currentSessionId;
+        gameStartTime.current = Date.now();
+        movementEnabled.current = false;
+
+        const timer = setTimeout(() => {
+          movementEnabled.current = true;
+          console.log('✅ Movement transactions enabled!');
+        }, delayTime);
+
+        return () => clearTimeout(timer);
+      }
+    }
+
+    // Reset when game is not active
+    if (gamePhase !== GamePhase.ACTIVE || !player?.game_active) {
+      if (movementEnabled.current) {
+        console.log('⏸️  Game not active, disabling movement transactions');
+      }
+      gameStartTime.current = null;
+      movementEnabled.current = false;
+      // Don't reset lastKnownSessionId - keep it to detect reconnects
+    }
+  }, [gamePhase, player?.game_active, player?.current_session_id]);
+
+
+  useEffect(() => {
+    // Multiple safety checks before processing boundaries
+    if (!movementEnabled.current) {
+      return; // Not enabled yet
+    }
+
+    if (isProcessingBoundary.current) {
+      return; // Already processing
+    }
+
+    // Verify game state is still active
+    if (gamePhase !== GamePhase.ACTIVE || !player?.game_active) {
+      console.log('⚠️  Game state changed, skipping boundary check');
+      return;
+    }
 
     const currentPos = { x: position.x, z: position.z };
     const { crossed, deltaX, deltaY, contractDeltaX, contractDeltaY } = checkBoundaryCrossing(currentPos, lastVerifiedPosition.current);
 
     if (crossed) {
-      console.log('🎯 Boundary crossed detected!', { 
-        from: lastVerifiedPosition.current, 
-        to: currentPos, 
+      console.log('🎯 Boundary crossed detected!', {
+        from: lastVerifiedPosition.current,
+        to: currentPos,
         originalDelta: { deltaX, deltaY },
-        contractDelta: { contractDeltaX, contractDeltaY }
+        contractDelta: { contractDeltaX, contractDeltaY },
+        sessionId: player.current_session_id,
+        gameActive: player.game_active
       });
       processBoundaryCrossing(contractDeltaX, contractDeltaY, deltaX, deltaY);
     }
-  }, [position.x, position.z, checkBoundaryCrossing, processBoundaryCrossing]);
+  }, [position.x, position.z, checkBoundaryCrossing, processBoundaryCrossing, gamePhase, player?.game_active, player?.current_session_id]);
 
   
   const closeTransactionPopup = useCallback(() => {

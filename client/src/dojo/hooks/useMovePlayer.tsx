@@ -74,7 +74,17 @@ export const useMovePlayer = () => {
     // Verify on-chain game session is active (prevent old session interference)
     // Only check if player data is available, otherwise trust isPlayerInitialized
     if (player && !player.game_active) {
-      const error = "Game session is not active. Please start a new game.";
+      const error = "Game session is not active on-chain. Please start a new game.";
+      console.error('❌ Move rejected: player.game_active is false');
+      setState(prev => ({ ...prev, error }));
+      setError(error);
+      return { success: false, error };
+    }
+
+    // Additional safety: verify session ID exists
+    if (player && (!player.current_session_id || player.current_session_id === 0)) {
+      const error = "No active game session found. Please start a new game.";
+      console.error('❌ Move rejected: no valid session ID');
       setState(prev => ({ ...prev, error }));
       setError(error);
       return { success: false, error };
