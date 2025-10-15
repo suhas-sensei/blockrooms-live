@@ -669,6 +669,7 @@ const playTrack = (src: string) => {
     player,
     currentRoom,
     gamePhase,
+    isPlayerInitialized,
     updatePosition,
     updateRotation,
     entities,
@@ -1792,10 +1793,11 @@ if (event.key.toLowerCase() === "b") {
   // Render gate
   // FUCKERY MAYBE
   const isConnected = connectionStatus === "connected";
-  const hasPlayer = player !== null;
   const isGameActive = gamePhase === GamePhase.ACTIVE;
+  // Use isPlayerInitialized instead of checking player !== null
+  // This ensures new accounts can enter the game even if player data hasn't synced yet
   const shouldShowGame =
-    isConnected && hasPlayer && isGameActive && gameStarted;
+    isConnected && isPlayerInitialized && isGameActive && gameStarted;
   // When the game becomes visible, try to start the music flow.
   // When leaving the game (back to menu/unmount), stop music.
   useEffect(() => {

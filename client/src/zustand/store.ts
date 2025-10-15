@@ -312,22 +312,28 @@ const useAppStore = create<AppStore>()(
           const gameStats = updateGameStats(player);
           const gamePhase = determineGamePhase(player, state.gameSession);
           const canTakeActions = player?.game_active && player?.is_alive;
+          // Player is initialized if we have a player object OR if we already have playerStats
+          const isPlayerInitialized = player !== null || state.playerStats !== null;
 
           return {
             player,
             gameStats,
             gamePhase,
             canTakeActions: canTakeActions || false,
+            isPlayerInitialized,
           };
         }),
 
-      setPlayerStats: (playerStats) => {
-        const isPlayerInitialized = playerStats !== null;
-        set({
-          playerStats,
-          isPlayerInitialized,
-        });
-      },
+      setPlayerStats: (playerStats) =>
+        set((state) => {
+          // Player is initialized if we have playerStats OR if we have a player object
+          // This handles the case where a new account has been initialized but stats haven't synced yet
+          const isPlayerInitialized = playerStats !== null || state.player !== null;
+          return {
+            playerStats,
+            isPlayerInitialized,
+          };
+        }),
 
       setGameSession: (gameSession) =>
         set((state) => {

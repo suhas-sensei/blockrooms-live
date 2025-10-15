@@ -3,16 +3,15 @@ import { ControllerConnector } from "@cartridge/connector";
 import { ControllerOptions } from "@cartridge/controller";
 import { constants } from "starknet";
 import { manifest } from "./manifest";
-import { getStoredNetwork, getCurrentNetworkConfig } from "./networkConfig";
 
-// Get the current network from localStorage
-const currentNetwork = getStoredNetwork();
-const networkConfig = getCurrentNetworkConfig();
+const { VITE_PUBLIC_DEPLOY_TYPE } = import.meta.env;
 
-console.log("Current Network:", currentNetwork);
+console.log("VITE_PUBLIC_DEPLOY_TYPE", VITE_PUBLIC_DEPLOY_TYPE);
 
 const getRpcUrl = () => {
-  switch (currentNetwork) {
+  switch (VITE_PUBLIC_DEPLOY_TYPE) {
+    case "localhost":
+        return "http://localhost:5050"; // Katana localhost default port
     case "mainnet":
         return "https://api.cartridge.gg/x/starknet/mainnet";
     case "sepolia":
@@ -23,7 +22,9 @@ const getRpcUrl = () => {
 };
 
 const getDefaultChainId = () => {
-  switch (currentNetwork) {
+  switch (VITE_PUBLIC_DEPLOY_TYPE) {
+    case "localhost":
+        return "0x4b4154414e41"; // KATANA in ASCII
     case "mainnet":
         return constants.StarknetChainId.SN_MAIN;
     case "sepolia":
@@ -71,6 +72,10 @@ const options: ControllerOptions = {
   policies,
   namespace: "blockrooms",
   slot: "blockrooms",
+  url: "https://x.cartridge.gg",
+  rpc: getRpcUrl(),
+  theme: "dope-wars",
+  colorMode: "dark",
 };
 
 const cartridgeConnector = new ControllerConnector(
