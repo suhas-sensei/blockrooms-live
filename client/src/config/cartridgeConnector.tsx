@@ -73,9 +73,6 @@ const options: ControllerOptions = {
   namespace: "blockrooms",
   slot: "blockrooms",
   url: "https://x.cartridge.gg",
-  rpc: getRpcUrl(),
-  theme: "dope-wars",
-  colorMode: "dark",
 };
 
 const cartridgeConnector = new ControllerConnector(
