@@ -25,7 +25,6 @@ type GLTFResult = GLTF & {
     main_mat: THREE.MeshStandardMaterial
     switches: THREE.MeshStandardMaterial
   }
-  animations: GLTFAction[]
 }
 
 export function Model(props: JSX.IntrinsicElements['group']) {

@@ -48,6 +48,7 @@ import GhostPatrol4 from "../models/GhostPatrol4";
 import GhostPatrol5 from "../models/GhostPatrol5";
 import GhostPatrol6 from "../models/GhostPatrol6";
 import GhostPatrol7 from "../models/GhostPatrol7";
+import { SkeletyEnemy } from "../components/game/SkeletyEnemy";
 
 
 import LightProximity from "../components/ui/LightProximity";
@@ -708,6 +709,10 @@ const playTrack = (src: string) => {
   const [ghost6Dead, setGhost6Dead] = useState(false);
   const [ghost7Dead, setGhost7Dead] = useState(false);
 
+  // Skelety enemy state
+  const [skeletyVisible, setSkeletyVisible] = useState(true);
+  const [skeletyDead, setSkeletyDead] = useState(false);
+
   // --- Ghost spawn gating --- (v2)
 
   const GHOST4 = { x: 294, z: 346, radius: 10 };
@@ -1268,7 +1273,7 @@ useEffect(() => {
               // Check if entity exists and is alive in the fresh data
               const freshEntities = useAppStore.getState().entities;
               const roomEntity = freshEntities.find((e) => e.room_id.toString() === targetRoomId);
-              const shouldSpawnEntity = roomEntity && roomEntity.is_alive && Number(roomEntity.health) > 0;
+              const shouldSpawnEntity = !!(roomEntity && roomEntity.is_alive && Number(roomEntity.health) > 0);
 
               console.log(`Entity status for room ${targetRoomId}:`, {
                 exists: !!roomEntity,
@@ -1749,6 +1754,11 @@ if (event.key.toLowerCase() === "b") {
         ]);
       }
 
+      // Check if Skelety was hit (Skelety handles its own hit detection via event)
+      if (!skeletyDead) {
+        window.dispatchEvent(new CustomEvent('skelety:shot', { detail: { hit } }));
+      }
+
     // ✅ Count as a transaction ONLY if:
       // 1) the shot actually hit an entity (flag may be on a parent),
       // 2) the active weapon is the SHOTGUN, and
@@ -2204,6 +2214,18 @@ shadow-mapSize-height={2048}
             />
           </group>
         )}
+
+        {/* Skelety Enemy */}
+        <SkeletyEnemy
+          playerPosition={playerPosition}
+          hasGun={showGun}
+          visible={skeletyVisible && !skeletyDead}
+          onHit={() => {
+            console.log('💀 Skelety killed!');
+            setSkeletyDead(true);
+            setSkeletyVisible(false);
+          }}
+        />
 
         {/* Room 1 Doors */}
         <DoorWall
