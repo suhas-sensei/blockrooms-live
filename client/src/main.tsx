@@ -1,5 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { Analytics } from "@vercel/analytics/react";
 
 // Dojo & Starknet
 import { init } from "@dojoengine/sdk";
@@ -47,6 +48,7 @@ async function main() {
             <App />
           </StarknetProvider>
         </DojoSdkProvider>
+        <Analytics />
       </StrictMode>
     );
   } catch (error) {
@@ -76,6 +78,7 @@ async function main() {
               </p>
             </div>
           </div>
+          <Analytics />
         </StrictMode>
       );
     }
