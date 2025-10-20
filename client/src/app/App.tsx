@@ -33,6 +33,10 @@ import DarknessMask from "../components/ui/DarknessMask";
 import Flashlight from "../components/ui/Flashlight";
 import Table from "../models/Table";
 import { PickupPrompt } from "../components/ui/PickupPrompt";
+import { TalkieIntro } from "../components/ui/TalkieIntro";
+import { TalkieTextSequence } from "../components/ui/TalkieTextSequence";
+import { EnemyWarningText } from "../components/ui/EnemyWarningText";
+import { DoorStatusMessage } from "../components/ui/DoorStatusMessage";
 import { worldToScreen } from "../utils/worldToScreen";
 // near your other model imports
 import { Ghost } from "../models/Ghost";
@@ -661,6 +665,7 @@ const playTrack = (src: string) => {
   const {
     gameStarted,
     showGun,
+    showTalkieIntro,
     showCrosshair,
     showMapTracker,
     position: playerPosition,
@@ -692,6 +697,13 @@ const playTrack = (src: string) => {
   const [ghost2Dead, setGhost2Dead] = useState(false);
   const [ghost3Dead, setGhost3Dead] = useState(false);
   const [ghost4Dead, setGhost4Dead] = useState(false);
+
+  // Enemy warning text state (shows once after first ghost shot)
+  const [showEnemyWarning, setShowEnemyWarning] = useState(false);
+  const [hasShownEnemyWarning, setHasShownEnemyWarning] = useState(false);
+
+  // Door status message state
+  const [doorStatusMessage, setDoorStatusMessage] = useState<string | null>(null);
   const [ghost5Dead, setGhost5Dead] = useState(false);
   const [ghost6Dead, setGhost6Dead] = useState(false);
   const [ghost7Dead, setGhost7Dead] = useState(false);
@@ -919,7 +931,11 @@ useEffect(() => {
     if (entity.length > 0) {
       const target = entity[0];
       if (!target.is_alive || Number(target.health) <= 0) {
-        console.log("Room 3 entity died, hiding cube");
+        console.log("Room 3 entity died, hiding cube", {
+          isAlive: target.is_alive,
+          health: Number(target.health),
+          entityId: target.entity_id
+        });
         setEntityCube3Visible(false);
         setShootPanelEnabled(false);
         if (!room3ShardCollected) setShardPanelEnabled(true);
@@ -1144,8 +1160,9 @@ useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       // T → pick up / show gun (runtime only)
       if (event.key.toLowerCase() === "t") {
-        // 1) First pickup: only equips the gun at (399, 392)
+        // 1) First pickup: shows talkie intro with text sequence at (399, 392)
         if (isNearFirstPickup) {
+          useAppStore.getState().setShowTalkieIntro(true);
           useAppStore.getState().setShowGun(true);
           setFirstPickupTaken(true); // hide the first pickup's asset/prop if you guard it
           return;
@@ -1199,6 +1216,9 @@ useEffect(() => {
 
         setEPressed(true);
 
+        // Show "opening door...." message
+        setDoorStatusMessage("opening door....");
+
         // Determine door id by position
         let doorId = "1";
         if (doorCheck.atDoor2) doorId = "2";
@@ -1215,13 +1235,15 @@ useEffect(() => {
         else if (doorCheck.atDoor13) doorId = "13";
 
         enterDoor(doorId)
-        
-          .then((result) => {
-            if (result.success) 
+
+          .then(async (result) => {
+            if (result.success)
               {
               console.log(`Door ${doorId} opened successfully...`);
               setCanEndGame(false); // disable "B" until we exit via Q
 
+              // Hide the "opening door...." message
+              setDoorStatusMessage(null);
 
               // Map door -> room
               const targetRoomId =
@@ -1239,42 +1261,77 @@ useEffect(() => {
                   ? "7"
                   : "1";
 
+              // Refetch game data to get fresh entity state
+              console.log(`🔄 Fetching fresh entity data for room ${targetRoomId}...`);
+              await refetchGameData();
+
+              // Check if entity exists and is alive in the fresh data
+              const freshEntities = useAppStore.getState().entities;
+              const roomEntity = freshEntities.find((e) => e.room_id.toString() === targetRoomId);
+              const shouldSpawnEntity = roomEntity && roomEntity.is_alive && Number(roomEntity.health) > 0;
+
+              console.log(`Entity status for room ${targetRoomId}:`, {
+                exists: !!roomEntity,
+                isAlive: roomEntity?.is_alive,
+                health: roomEntity ? Number(roomEntity.health) : 0,
+                shouldSpawn: shouldSpawnEntity
+              });
+
               if (targetRoomId === "1") {
                 setDoorOpened(true);
-                setTimeout(() => setEntityCubeVisible(true), 1000);
+                if (shouldSpawnEntity) {
+                  setTimeout(() => setEntityCubeVisible(true), 1000);
+                }
               } else if (targetRoomId === "2") {
                 setDoor2Opened(true);
-                setTimeout(() => setEntityCube2Visible(true), 1000);
+                if (shouldSpawnEntity) {
+                  setTimeout(() => setEntityCube2Visible(true), 1000);
+                }
               } else if (targetRoomId === "3") {
                 setDoor3Opened(true);
-                setTimeout(() => setEntityCube3Visible(true), 1000);
+                if (shouldSpawnEntity) {
+                  setTimeout(() => setEntityCube3Visible(true), 1000);
+                }
               } else if (targetRoomId === "4") {
                 setDoor4Opened(true);
-                setTimeout(() => setEntityCube4Visible(true), 1000);
+                if (shouldSpawnEntity) {
+                  setTimeout(() => setEntityCube4Visible(true), 1000);
+                }
               } else if (targetRoomId === "5") {
                 setDoor5Opened(true);
-                setTimeout(() => setEntityCube5Visible(true), 1000);
+                if (shouldSpawnEntity) {
+                  setTimeout(() => setEntityCube5Visible(true), 1000);
+                }
               } else if (targetRoomId === "6") {
                 setDoor6Opened(true);
-                setTimeout(() => setEntityCube6Visible(true), 1000);
+                if (shouldSpawnEntity) {
+                  setTimeout(() => setEntityCube6Visible(true), 1000);
+                }
               } else if (targetRoomId === "7") {
                 setDoor7Opened(true);
-                setTimeout(() => setEntityCube7Visible(true), 1000);
+                if (shouldSpawnEntity) {
+                  setTimeout(() => setEntityCube7Visible(true), 1000);
+                }
               }
 
               setShardPanelEnabled(false); // shard stays disabled until kill
               setExitPanelEnabled(false); // exit stays disabled until shard is collected
-              setShootPanelEnabled(true); // (ensure F panel is enabled on entry)
+              setShootPanelEnabled(shouldSpawnEntity); // only enable shoot if entity exists
             } else {
               console.error("Failed to open door:", result.error);
+              // Show "welp, door stuck" message
+              setDoorStatusMessage("welp, door stuck");
+              setTimeout(() => setDoorStatusMessage(null), 3000);
             }
           })
-          .catch((error) => console.error("Door opening error:", error));
+          .catch((error) => {
+            console.error("Door opening error:", error);
+            // Show "welp, door stuck" message
+            setDoorStatusMessage("welp, door stuck");
+            setTimeout(() => setDoorStatusMessage(null), 3000);
+          });
 
         setTimeout(() => setEPressed(false), 1000);
-        setTimeout(() => {
-          refetchGameData();
-        }, 1200);
       }
 if (event.key.toLowerCase() === "b") {
   if (!canEndGame) {
@@ -1619,6 +1676,12 @@ if (event.key.toLowerCase() === "b") {
       setPromptKey((k) => k + 1);
       setTimeout(() => setShowShootPrompt(false), 350);
 
+      // Show enemy warning text on first ghost shot (only once)
+      if (!hasShownEnemyWarning) {
+        setShowEnemyWarning(true);
+        setHasShownEnemyWarning(true);
+      }
+
       if (which === 1) {
         setGhost1Hits((h) => {
           const n = h + 1;
@@ -1645,7 +1708,7 @@ if (event.key.toLowerCase() === "b") {
         }, 600);
       }
     },
-    [setBloodEffects]
+    [hasShownEnemyWarning]
   );
 // DO NOT CHANGE
   // Gun hit handling (unchanged)
@@ -1826,8 +1889,8 @@ if (event.key.toLowerCase() === "b") {
 
       <AudioManager />
 
-      {/* Player HUD */}
-      <PlayerHUD />
+      {/* Player HUD - only shown after picking up gun with T */}
+      {showGun && <PlayerHUD />}
 
       {/* Transaction Popup */}
       <TransactionPopup
@@ -1942,8 +2005,8 @@ if (event.key.toLowerCase() === "b") {
         }
       `}</style>
 
-      {/* New lightweight UI overlays (purely visual) */}
-      <BlockroomsCard />
+      {/* New lightweight UI overlays (purely visual) - only shown after picking up gun with T */}
+      {showGun && <BlockroomsCard />}
       <HUD />
       <GrainVignetteOverlay
         intensity={0.14}
@@ -2321,6 +2384,9 @@ shadow-mapSize-height={2048}
 
         {/* <Ghost position={[391, 0, 399]} /> */}
 
+{/* Talkie Intro Animation - shown for 4 seconds when T is pressed */}
+{showTalkieIntro && <TalkieIntro />}
+
 {/* Weapons */}
 {showGun && (
   activeWeapon === "pistol" ? (
@@ -2456,6 +2522,17 @@ shadow-mapSize-height={2048}
           }
         />
       </Canvas>
+
+      {/* Talkie Text Sequence - displays messages after picking up the talkie */}
+      {showTalkieIntro && <TalkieTextSequence />}
+
+      {/* Enemy Warning Text - displays messages after first ghost shot */}
+      {showEnemyWarning && (
+        <EnemyWarningText onComplete={() => setShowEnemyWarning(false)} />
+      )}
+
+      {/* Door Status Message - shows "opening door...." or "welp, door stuck" */}
+      {doorStatusMessage && <DoorStatusMessage message={doorStatusMessage} />}
     </div>
   );
 };

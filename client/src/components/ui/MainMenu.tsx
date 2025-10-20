@@ -15,28 +15,7 @@ type Move = "up" | "down" | "left" | "right";
 const BGM_SRC = "/audio/mainmenu.mp3";
 
 export function MainMenu(): JSX.Element {
-  // Poll refetch until the session flag in store flips to "not active" (or timeout).
-const pollRefetchUntilInactive = async (
-  refetchFn: () => Promise<any>,
-  maxTries = 12,
-  gapMs = 350
-): Promise<void> => {
-  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-  // read from zustand without re-render dependency
-  const isActive = () => {
-    const s = useAppStore.getState();
-    // treat either UI phase ACTIVE or player.game_active as "active"
-    return s.gamePhase === GamePhase.ACTIVE || Boolean(s.player?.game_active);
-  };
-
-  for (let i = 0; i < maxTries; i++) {
-    await refetchFn();         // ask hooks to reload latest on-chain state
-    await sleep(gapMs);        // let state propagate to store/UI
-    if (!isActive()) return;   // stop as soon as it’s inactive
-  }
-};
-
-    // BGM refs/state
+  // BGM refs/state
   const bgmRef = useRef<HTMLAudioElement | null>(null);
   const [bgmReady, setBgmReady] = useState(false);
   const [bgmPlaying, setBgmPlaying] = useState(false);
@@ -246,8 +225,6 @@ const pollRefetchUntilInactive = async (
   }, [images.length]);
 
   const canEnterGame = isConnected && hasPlayerStats && !startingGame;
-  const gameAlreadyActive =
-    gamePhase === GamePhase.ACTIVE || (player as any)?.game_active;
 
 const handlePlayForFree = async ( ): Promise<void> => {
   await ensureBgm();
@@ -289,25 +266,35 @@ const handlePlayForFree = async ( ): Promise<void> => {
 
   // Get fresh state
   const freshState = useAppStore.getState();
-  const currentGameAlreadyActive =
-    freshState.gamePhase === GamePhase.ACTIVE || freshState.player?.game_active;
+  const currentRoomId = freshState.currentRoom?.room_id ? String(freshState.currentRoom.room_id) : "0";
+  const isNotInStartingRoom = currentRoomId !== "0";
 
-  // If a previous session is still active, end it first (backend "Press B")
-  if (currentGameAlreadyActive && canEndGame) {
-    console.log('🔄 Ending previous session...');
+  // If player is not in room 0 (starting room), end the previous session first
+  if (isNotInStartingRoom && canEndGame) {
+    console.log(`🔄 Player is in room ${currentRoomId}, ending previous session...`);
     try {
       await endGame();
     } catch(e) {
-      console.log(e);
-      
+      console.error("Error ending game:", e);
       // ignore; proceed to refresh and start
     }
 
-    // HARD REFRESH OF FRONTEND STATE: refetch until store no longer marks session active
-    // Increased attempts for better cleanup
+    // HARD REFRESH: refetch until player is back in room 0
+    console.log("⏳ Waiting for player to return to room 0...");
     try {
-      await pollRefetchUntilInactive(refetch, 18, 400);
-    } catch {
+      for (let i = 0; i < 18; i++) {
+        await refetch();
+        await new Promise((r) => setTimeout(r, 400));
+        const freshState2 = useAppStore.getState();
+        const newRoomId = freshState2.currentRoom?.room_id ? String(freshState2.currentRoom.room_id) : "0";
+        console.log(`Room check ${i + 1}/18: Current room = ${newRoomId}`);
+        if (newRoomId === "0") {
+          console.log("✅ Player back in room 0, proceeding...");
+          break;
+        }
+      }
+    } catch(e) {
+      console.error("Error during room polling:", e);
       // even if polling fails, still move on
     }
   }
