@@ -58,8 +58,21 @@ useEffect(() => {
     switch (event.code) {
       // 👇 NEW: press T to pick up / show the gun
       case "KeyT":
-        // flips the existing store flag; no schema changes
-        useAppStore.setState({ showGun: true });
+        // Only trigger if gun not already shown or intro not playing
+        const currentState = useAppStore.getState();
+        if (currentState.showGun || currentState.showTalkieIntro) return;
+
+        // Show talkie intro animation - PERMANENT FOR DEBUGGING
+        useAppStore.setState({ showTalkieIntro: true });
+
+        // TODO: Re-enable this after debugging size
+        // After 4 seconds, hide talkie and show gun/UI
+        // setTimeout(() => {
+        //   useAppStore.setState({
+        //     showTalkieIntro: false,
+        //     showGun: true
+        //   });
+        // }, 4000);
         return;
 
       case "KeyW":

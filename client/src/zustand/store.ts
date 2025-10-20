@@ -73,6 +73,7 @@ interface AppState {
   gameStarted: boolean;
   showWarning: boolean;
   showGun: boolean;
+  showTalkieIntro: boolean;
   showCrosshair: boolean;
   showMapTracker: boolean;
   position: { x: number; y: number; z: number };
@@ -145,6 +146,7 @@ interface AppActions {
   hideWarning: () => void;
   setShowWarning: (show: boolean) => void;
   setShowGun: (show: boolean) => void;
+  setShowTalkieIntro: (show: boolean) => void;
   setShowCrosshair: (show: boolean) => void;
   setShowMapTracker: (show: boolean) => void;
   updatePosition: (position: { x: number; y: number; z: number }) => void;
@@ -287,6 +289,7 @@ const initialState: AppState = {
   gameStarted: false,
   showWarning: true,
   showGun: false,
+  showTalkieIntro: false,
   showCrosshair: true,
   showMapTracker: true,
   position: { x: 400, y: 1.5, z: 400 },
@@ -610,6 +613,7 @@ const useAppStore = create<AppStore>()(
       hideWarning: () => set({ showWarning: false }),
       setShowWarning: (showWarning) => set({ showWarning }),
       setShowGun: (showGun) => set({ showGun }),
+      setShowTalkieIntro: (showTalkieIntro) => set({ showTalkieIntro }),
       setShowCrosshair: (showCrosshair) => set({ showCrosshair }),
       setShowMapTracker: (showMapTracker) => set({ showMapTracker }),
 
