@@ -16,6 +16,7 @@ export interface Keys {
 export interface FirstPersonControlsProps {
   onPositionUpdate?: (position: Vector3) => void;
   onRotationUpdate?: (rotation: number) => void; // New prop for rotation updates
+  disabled?: boolean; // Disable all controls and mouse movement
 }
 
 export type GunProps = {

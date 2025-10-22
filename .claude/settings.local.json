@@ -6,7 +6,8 @@
       "Bash(npm i @vercel/analytics)",
       "Bash(pnpm install)",
       "Bash(git add client/pnpm-lock.yaml)",
-      "Bash(git commit -m \"$(cat <<''EOF''\nUpdate pnpm-lock.yaml for Vercel Analytics\n\nAdd lockfile changes for @vercel/analytics package to fix deployment.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
+      "Bash(git commit -m \"$(cat <<''EOF''\nUpdate pnpm-lock.yaml for Vercel Analytics\n\nAdd lockfile changes for @vercel/analytics package to fix deployment.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "mcp__ide__getDiagnostics"
     ],
     "deny": [],
     "ask": []

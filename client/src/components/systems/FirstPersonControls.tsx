@@ -8,6 +8,7 @@ import useAppStore from "../../zustand/store";
 export function FirstPersonControls({
   onPositionUpdate, // Keep for backward compatibility
   onRotationUpdate, // Keep for backward compatibility
+  disabled = false, // Disable controls during spawn sequence
 }: FirstPersonControlsProps): null {
   const { camera, scene } = useThree();
   
@@ -55,6 +56,12 @@ useEffect(() => {
 // Handle keyboard input
 useEffect(() => {
   const handleKeyDown = (event: KeyboardEvent): void => {
+    // Ignore all input if controls are disabled
+    if (disabled) {
+      console.log('🚫 Controls disabled - ignoring key:', event.code);
+      return;
+    }
+
     switch (event.code) {
       // 👇 NEW: press T to pick up / show the gun
       case "KeyT":
@@ -97,6 +104,9 @@ useEffect(() => {
   };
 
   const handleKeyUp = (event: KeyboardEvent): void => {
+    // Ignore all input if controls are disabled
+    if (disabled) return;
+
     switch (event.code) {
       case "KeyW":
       case "ArrowUp":
@@ -126,7 +136,7 @@ useEffect(() => {
     document.removeEventListener("keydown", handleKeyDown);
     document.removeEventListener("keyup", handleKeyUp);
   };
-}, []);
+}, [disabled]);
 
 
   // Check for collisions using raycasting
@@ -176,6 +186,13 @@ useEffect(() => {
 
   // Update camera position based on input with collision detection and running animation
   useFrame((state, delta: number) => {
+    // If controls are disabled, skip all movement logic
+    if (disabled) {
+      setMoving(false);
+      setVelocity({ x: 0, y: 0, z: 0 });
+      return;
+    }
+
     const dt = delta; // don't clamp for movement
 
 

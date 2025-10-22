@@ -35,8 +35,13 @@ import Table from "../models/Table";
 import { PickupPrompt } from "../components/ui/PickupPrompt";
 import { TalkieIntro } from "../components/ui/TalkieIntro";
 import { TalkieTextSequence } from "../components/ui/TalkieTextSequence";
+import { SpawnTextSequence } from "../components/ui/SpawnTextSequence";
+import { SkeletyDeathTextSequence } from "../components/ui/SkeletyDeathTextSequence";
+import { HazyOverlay } from "../components/ui/HazyOverlay";
 import { EnemyWarningText } from "../components/ui/EnemyWarningText";
 import { DoorStatusMessage } from "../components/ui/DoorStatusMessage";
+import { FailureScreen } from "../components/ui/FailureScreen";
+import { CameraShake } from "../components/systems/CameraShake";
 import { worldToScreen } from "../utils/worldToScreen";
 // near your other model imports
 import { Ghost } from "../models/Ghost";
@@ -712,6 +717,7 @@ const playTrack = (src: string) => {
   // Skelety enemy state
   const [skeletyVisible, setSkeletyVisible] = useState(true);
   const [skeletyDead, setSkeletyDead] = useState(false);
+  const [showSkeletyDeathText, setShowSkeletyDeathText] = useState(false);
 
   // --- Ghost spawn gating --- (v2)
 
@@ -863,7 +869,57 @@ const [canEndGame, setCanEndGame] = useState<boolean>(true);
   const [exitPanelEnabled, setExitPanelEnabled] = useState<boolean>(false);
   const [promptKey, setPromptKey] = useState<number>(0);
 
+  // Spawn effects
+  const [triggerSpawnShake, setTriggerSpawnShake] = useState<boolean>(false);
+  const [showSpawnText, setShowSpawnText] = useState<boolean>(false);
+  const [isSpawnSequenceActive, setIsSpawnSequenceActive] = useState<boolean>(false);
+  const hasTriggeredSpawnRef = useRef<boolean>(false);
+
+  // Track consecutive door stuck failures
+  const [consecutiveDoorStuckCount, setConsecutiveDoorStuckCount] = useState<number>(0);
+  const [showFailureScreen, setShowFailureScreen] = useState<boolean>(false);
+
   const { endGame } = useEndGame();
+
+  // Helper function to handle door stuck failures
+  const handleDoorStuck = useCallback(() => {
+    setConsecutiveDoorStuckCount((prevCount) => {
+      const newCount = prevCount + 1;
+      console.log(`Door stuck count: ${newCount}`);
+
+      if (newCount >= 2) {
+        // Show failure screen
+        setShowFailureScreen(true);
+
+        // Clear browser storage and end game after 3 seconds
+        setTimeout(() => {
+          clearClientStorage();
+          stopMusic();
+
+          endGame()
+            .then((result) => {
+              if (result.success) {
+                console.log("Game ended after door stuck failures");
+              }
+            })
+            .catch((error) => {
+              console.error("Error ending game:", error);
+            })
+            .finally(() => {
+              // Reset states
+              setShowFailureScreen(false);
+              setConsecutiveDoorStuckCount(0);
+            });
+        }, 3000);
+      }
+
+      return newCount;
+    });
+
+    // Show "welp, door stuck" message
+    setDoorStatusMessage("welp, door stuck");
+    setTimeout(() => setDoorStatusMessage(null), 3000);
+  }, [endGame]);
 
   // Reloading HUD state from Gun.tsx events, NO CHANGES SER
   const [isReloadingHud, setIsReloadingHud] = useState(false);
@@ -892,6 +948,35 @@ useEffect(() => {
     const mapCenterPosition = new Vector3(400, 1.5, 400);
     updatePosition(mapCenterPosition);
   }, [updatePosition]);
+
+  // Trigger spawn effects when game starts (only once)
+  useEffect(() => {
+    if (gameStarted && !hasTriggeredSpawnRef.current) {
+      hasTriggeredSpawnRef.current = true;
+
+      // Mark spawn sequence as active (disables controls)
+      setIsSpawnSequenceActive(true);
+      console.log('🎬 Spawn sequence started - Controls DISABLED');
+
+      // Trigger camera shake immediately (will continue as dizzy effect)
+      setTriggerSpawnShake(true);
+
+      // Show spawn text immediately (component has its own delay)
+      setShowSpawnText(true);
+
+      // Total duration calculation:
+      // Component initial delay: 1000ms
+      // 4 messages × (4000ms display + 500ms fade) = 18000ms
+      // Final fade and cleanup: 500ms
+      // Total: 19500ms
+      // Add buffer for safety: 20000ms
+      setTimeout(() => {
+        console.log('🏁 Spawn sequence ending - Controls ENABLED');
+        setIsSpawnSequenceActive(false);
+        setTriggerSpawnShake(false);
+      }, 20000);
+    }
+  }, [gameStarted]);
 // FUCKERY FUCKERY FUCKERY
   // Room 1: hide cube when entity dies (open is gated to Q+shard)
   useEffect(() => {
@@ -1163,6 +1248,9 @@ useEffect(() => {
   // Key handlers DO NOT CHANGE, IT PICKS UP THE GUNS
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      // Disable all actions during spawn sequence
+      if (isSpawnSequenceActive) return;
+
       // T → pick up / show gun (runtime only)
       if (event.key.toLowerCase() === "t") {
         // 1) First pickup: shows talkie intro with text sequence at (399, 392)
@@ -2224,6 +2312,10 @@ shadow-mapSize-height={2048}
             console.log('💀 Skelety killed!');
             setSkeletyDead(true);
             setSkeletyVisible(false);
+            // Show death text sequence after a short delay
+            setTimeout(() => {
+              setShowSkeletyDeathText(true);
+            }, 1000);
           }}
         />
 
@@ -2347,10 +2439,19 @@ shadow-mapSize-height={2048}
         {/* Pointer lock */}
         <PointerLockControls />
 
-        {/* Controls */}
+        {/* Controls - disabled during spawn sequence */}
         <FirstPersonControls
           onPositionUpdate={handlePositionUpdate}
           onRotationUpdate={handleRotationUpdate}
+          disabled={isSpawnSequenceActive}
+        />
+
+        {/* Camera shake effect on spawn - continuous dizzy effect during spawn sequence */}
+        <CameraShake
+          trigger={triggerSpawnShake}
+          intensity={0.5}
+          duration={1.5}
+          continuous={true}
         />
 
         {/* Level */}
@@ -2545,8 +2646,17 @@ shadow-mapSize-height={2048}
         />
       </Canvas>
 
+      {/* Hazy overlay during spawn sequence */}
+      {isSpawnSequenceActive && <HazyOverlay intensity={0.6} />}
+
+      {/* Spawn Text Sequence - displays messages when player spawns */}
+      {showSpawnText && <SpawnTextSequence onComplete={() => setShowSpawnText(false)} />}
+
       {/* Talkie Text Sequence - displays messages after picking up the talkie */}
       {showTalkieIntro && <TalkieTextSequence />}
+
+      {/* Skelety Death Text Sequence - displays messages after Skelety dies */}
+      {showSkeletyDeathText && <SkeletyDeathTextSequence onComplete={() => setShowSkeletyDeathText(false)} />}
 
       {/* Enemy Warning Text - displays messages after first ghost shot */}
       {showEnemyWarning && (
@@ -2555,6 +2665,9 @@ shadow-mapSize-height={2048}
 
       {/* Door Status Message - shows "opening door...." or "welp, door stuck" */}
       {doorStatusMessage && <DoorStatusMessage message={doorStatusMessage} />}
+
+      {/* Failure Screen - shows when door stuck happens 2 times in a row */}
+      {showFailureScreen && <FailureScreen />}
     </div>
   );
 };

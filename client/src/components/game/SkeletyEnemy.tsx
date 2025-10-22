@@ -79,15 +79,27 @@ export const SkeletyEnemy: React.FC<SkeletyEnemyProps> = ({
     [playerPosition.x, playerPosition.y, playerPosition.z]
   );
 
-  // Initialize position 10 units away from player on mount
+  // Initialize position within 10-30 units away from player on mount
   useEffect(() => {
     if (visible && !hasSpawned) {
-      const direction = new THREE.Vector3(1, 0, 0); // Start in front
-      const spawnPos = playerPosVec3.clone().add(direction.multiplyScalar(10));
+      // Random angle around player (0-360 degrees)
+      const angle = Math.random() * Math.PI * 2;
+      // Random distance between 10-30 units
+      const distance = 10 + Math.random() * 20; // 10 + (0-20) = 10-30 units
+
+      // Calculate spawn position using polar coordinates
+      const direction = new THREE.Vector3(
+        Math.cos(angle),
+        0,
+        Math.sin(angle)
+      );
+
+      const spawnPos = playerPosVec3.clone().add(direction.multiplyScalar(distance));
       spawnPos.y = 0; // Keep at ground level
       setPosition(spawnPos);
       setHasSpawned(true);
       console.log('🦴 Skelety spawned at:', spawnPos);
+      console.log('🦴 Distance from player:', distance.toFixed(2), 'units');
       console.log('🦴 Player position:', playerPosVec3);
       console.log('🦴 hasGun:', hasGun);
     }
