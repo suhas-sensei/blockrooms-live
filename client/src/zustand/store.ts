@@ -1,6 +1,5 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import * as models from "../dojo/models.gen";
 
 enum GamePhase {
   UNINITIALIZED = "uninitialized",
@@ -10,19 +9,83 @@ enum GamePhase {
   GAME_OVER = "game_over",
 }
 
+// Local game types (no blockchain)
+interface Player {
+  player_id: string;
+  position: { x: number; y: number };
+  current_room: number;
+  health: number;
+  max_health: number;
+  shards: number;
+  rooms_cleared: number;
+  is_alive: boolean;
+  game_active: boolean;
+  has_key: boolean;
+  has_shard_one: boolean;
+  has_shard_two: boolean;
+  has_shard_three: boolean;
+  special_ability_cooldown: number;
+}
+
+interface PlayerStats {
+  player_id: string;
+  games_played: number;
+  games_won: number;
+  total_shards_collected: number;
+}
+
+interface GameSession {
+  session_id: string;
+  start_time: number;
+  rooms_cleared: number;
+  victory_achieved: boolean;
+  session_complete: boolean;
+}
+
+interface GameConfig {
+  grid_size: number;
+  starting_health: number;
+  entity_spawn_rate: number;
+  door_detection_range: number;
+}
+
+interface Entity {
+  entity_id: string;
+  entity_type: string;
+  room_id: number;
+  position: { x: number; y: number };
+  health: number;
+  is_alive: boolean;
+  damage_per_turn: number;
+}
+
+interface Room {
+  room_id: number;
+  initialized: boolean;
+  cleared: boolean;
+  entity_count: number;
+  has_treasure: boolean;
+}
+
+interface ShardLocation {
+  shard_id: string;
+  room_id: number;
+  numbered_shard: string;
+  collected: boolean;
+}
+
 interface AppState {
-  // Core player data (from blockchain)
-  player: models.Player | null;
-  playerStats: models.PlayerStats | null;
-  gameSession: models.GameSession | null;
-  gameConfig: models.GameConfig | null;
+  // Core player data (local)
+  player: Player | null;
+  playerStats: PlayerStats | null;
+  gameSession: GameSession | null;
+  gameConfig: GameConfig | null;
 
   // Current room and world state
-  currentRoom: models.Room | null;
-  rooms: Map<string, models.Room>;
-  entities: models.Entity[];
-  entityStates: models.EntityState[];
-  shardLocations: models.ShardLocation[];
+  currentRoom: Room | null;
+  rooms: Map<string, Room>;
+  entities: Entity[];
+  shardLocations: ShardLocation[];
 
   // Door state
   nearbyDoors: any[];
@@ -31,20 +94,8 @@ interface AppState {
   gamePhase: GamePhase;
   isPlayerInitialized: boolean;
   canTakeActions: boolean;
-  actionsThisTurn: number; // Add this back
-  maxActionsPerTurn: number; // Add this back
-
-  // Recent events (for UI feedback and animations)
-  recentEvents: {
-    gameStarted: models.GameStarted[];
-    gameCompleted: models.GameCompleted[];
-    victoriesAchieved: models.VictoryAchieved[];
-    roomsCleared: models.RoomCleared[];
-    roomsEntered: models.RoomEntered[];
-    roomsExited: models.RoomExited[];
-    playerDeaths: models.PlayerDeath[];
-    shardsCollected: models.NumberedShardCollected[];
-  };
+  actionsThisTurn: number;
+  maxActionsPerTurn: number;
 
   // UI/UX state
   isLoading: boolean;
@@ -53,19 +104,19 @@ interface AppState {
   actionInProgress: boolean;
   connectionStatus: "connected" | "connecting" | "disconnected";
 
-  // Game statistics (derived from player data)
+  // Game statistics
   gameStats: {
     currentHealth: number;
     maxHealth: number;
     currentShards: number;
     roomsCleared: number;
-    turnNumber: number; // Add this back
-    dodgeActiveTurns: number; // Add this back
+    turnNumber: number;
+    dodgeActiveTurns: number;
     hasAllNumberedShards: boolean;
     hasKey: boolean;
     isAlive: boolean;
     gameActive: boolean;
-    movementLocked: boolean; // Add this back
+    movementLocked: boolean;
     specialAbilityCooldown: number;
   };
 
@@ -85,54 +136,37 @@ interface AppState {
 
 // Define actions interface
 interface AppActions {
-  // Core state setters (from blockchain data)
-  setPlayer: (player: models.Player | null) => void;
-  setPlayerStats: (stats: models.PlayerStats | null) => void;
-  setGameSession: (session: models.GameSession | null) => void;
-  setGameConfig: (config: models.GameConfig | null) => void;
+  // Core state setters
+  setPlayer: (player: Player | null) => void;
+  setPlayerStats: (stats: PlayerStats | null) => void;
+  setGameSession: (session: GameSession | null) => void;
+  setGameConfig: (config: GameConfig | null) => void;
 
   // World state management
-  setCurrentRoom: (room: models.Room | null) => void;
-  updateRoom: (room: models.Room) => void;
-  setRooms: (rooms: models.Room[]) => void;
+  setCurrentRoom: (room: Room | null) => void;
+  updateRoom: (room: Room) => void;
+  setRooms: (rooms: Room[]) => void;
   setNearbyDoors: (doors: any[]) => void;
-  setEntities: (entities: models.Entity[]) => void;
-  updateEntity: (entity: models.Entity) => void;
+  setEntities: (entities: Entity[]) => void;
+  updateEntity: (entity: Entity) => void;
   removeEntity: (entityId: string) => void;
-
-  setEntityStates: (states: models.EntityState[]) => void;
-  updateEntityState: (state: models.EntityState) => void;
-
-  setShardLocations: (locations: models.ShardLocation[]) => void;
-  updateShardLocation: (location: models.ShardLocation) => void;
+  setShardLocations: (locations: ShardLocation[]) => void;
+  updateShardLocation: (location: ShardLocation) => void;
 
   // Game state management
   setGamePhase: (phase: GamePhase) => void;
   setPlayerInitialized: (initialized: boolean) => void;
   setCanTakeActions: (can: boolean) => void;
-  setActionsThisTurn: (count: number) => void; // Add this back
-  incrementActionsThisTurn: () => void; // Add this back
-  resetActionsThisTurn: () => void; // Add this back
-
-  // Event handling (for UI feedback)
-  addGameStarted: (event: models.GameStarted) => void;
-  addGameCompleted: (event: models.GameCompleted) => void;
-  addVictoryAchieved: (event: models.VictoryAchieved) => void;
-  addRoomCleared: (event: models.RoomCleared) => void;
-  addRoomEntered: (event: models.RoomEntered) => void;
-  addRoomExited: (event: models.RoomExited) => void;
-  addPlayerDeath: (event: models.PlayerDeath) => void;
-  addShardCollected: (event: models.NumberedShardCollected) => void;
-  clearRecentEvents: () => void;
+  setActionsThisTurn: (count: number) => void;
+  incrementActionsThisTurn: () => void;
+  resetActionsThisTurn: () => void;
 
   // UI actions
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   setLastTransaction: (txHash: string | null) => void;
   setActionInProgress: (inProgress: boolean) => void;
-  setConnectionStatus: (
-    status: "connected" | "connecting" | "disconnected"
-  ) => void;
+  setConnectionStatus: (status: "connected" | "connecting" | "disconnected") => void;
 
   // Game lifecycle
   initializeGame: () => void;
@@ -159,22 +193,19 @@ interface AppActions {
   canMove: () => boolean;
   canAttack: () => boolean;
   canCollectShard: (roomId: string, shardId: string) => boolean | undefined;
-  getEntitiesInCurrentRoom: () => models.Entity[];
-  getShardsInCurrentRoom: () => models.ShardLocation[];
-  getRoomById: (roomId: string) => models.Room | null;
-  getEntityById: (entityId: string) => models.Entity | null;
-  hasNumberedShard: (shardType: models.NumberedShardEnum) => boolean;
+  getEntitiesInCurrentRoom: () => Entity[];
+  getShardsInCurrentRoom: () => ShardLocation[];
+  getRoomById: (roomId: string) => Room | null;
+  getEntityById: (entityId: string) => Entity | null;
   isRoomCleared: (roomId: string) => boolean;
-  getActionsRemaining: () => number; // Add this function
+  getActionsRemaining: () => number;
 }
 
 // Combine state and actions
 type AppStore = AppState & AppActions;
 
 // Helper to update game stats from player data
-const updateGameStats = (
-  player: models.Player | null
-): AppState["gameStats"] => {
+const updateGameStats = (player: Player | null): AppState["gameStats"] => {
   if (!player) {
     return {
       currentHealth: 0,
@@ -197,79 +228,88 @@ const updateGameStats = (
     maxHealth: Number(player.max_health),
     currentShards: Number(player.shards),
     roomsCleared: Number(player.rooms_cleared),
-    turnNumber: 1, // Default value since turn-based removed
-    dodgeActiveTurns: 0, // Default value
-    hasAllNumberedShards:
-      player.has_shard_one && player.has_shard_two && player.has_shard_three,
+    turnNumber: 1,
+    dodgeActiveTurns: 0,
+    hasAllNumberedShards: player.has_shard_one && player.has_shard_two && player.has_shard_three,
     hasKey: player.has_key,
     isAlive: player.is_alive,
     gameActive: player.game_active,
-    movementLocked: false, // Default value
+    movementLocked: false,
     specialAbilityCooldown: Number(player.special_ability_cooldown),
   };
 };
 
 // Helper to determine game phase based on state
-const determineGamePhase = (
-  player: models.Player | null,
-  gameSession: models.GameSession | null
-): GamePhase => {
+const determineGamePhase = (player: Player | null, gameSession: GameSession | null): GamePhase => {
   if (!player) return GamePhase.UNINITIALIZED;
-
   if (!player.is_alive) return GamePhase.GAME_OVER;
-
   if (gameSession?.victory_achieved) return GamePhase.COMPLETED;
-
-  if (gameSession?.session_complete && !gameSession.victory_achieved)
-    return GamePhase.GAME_OVER;
-
+  if (gameSession?.session_complete && !gameSession.victory_achieved) return GamePhase.GAME_OVER;
   if (player.game_active) return GamePhase.ACTIVE;
-
   return GamePhase.INITIALIZED;
 };
 
+// Create default player for local game
+const createDefaultPlayer = (): Player => ({
+  player_id: "local-player",
+  position: { x: 400, y: 400 },
+  current_room: 0,
+  health: 100,
+  max_health: 100,
+  shards: 0,
+  rooms_cleared: 0,
+  is_alive: true,
+  game_active: true,
+  has_key: false,
+  has_shard_one: false,
+  has_shard_two: false,
+  has_shard_three: false,
+  special_ability_cooldown: 0,
+});
+
+const createDefaultPlayerStats = (): PlayerStats => ({
+  player_id: "local-player",
+  games_played: 0,
+  games_won: 0,
+  total_shards_collected: 0,
+});
+
+const createDefaultGameSession = (): GameSession => ({
+  session_id: "local-session",
+  start_time: Date.now(),
+  rooms_cleared: 0,
+  victory_achieved: false,
+  session_complete: false,
+});
+
+const createDefaultGameConfig = (): GameConfig => ({
+  grid_size: 800,
+  starting_health: 100,
+  entity_spawn_rate: 2,
+  door_detection_range: 50,
+});
+
 // Initial state
 const initialState: AppState = {
-  // Core data
   player: null,
   playerStats: null,
   gameSession: null,
   gameConfig: null,
-
-  // World state
   currentRoom: null,
   rooms: new Map(),
   entities: [],
-  entityStates: [],
   shardLocations: [],
   nearbyDoors: [],
-  // Game state
   gamePhase: GamePhase.UNINITIALIZED,
   isPlayerInitialized: false,
   canTakeActions: false,
   actionsThisTurn: 0,
-  maxActionsPerTurn: 3, // Default value
-
-  // Events (limited recent history for UI feedback)
-  recentEvents: {
-    gameStarted: [],
-    gameCompleted: [],
-    victoriesAchieved: [],
-    roomsCleared: [],
-    roomsEntered: [],
-    roomsExited: [],
-    playerDeaths: [],
-    shardsCollected: [],
-  },
-
-  // UI state
+  maxActionsPerTurn: 3,
   isLoading: false,
   error: null,
   lastTransaction: null,
   actionInProgress: false,
   connectionStatus: "disconnected",
-
-  // Stats
   gameStats: {
     currentHealth: 0,
     maxHealth: 0,
@@ -284,8 +324,6 @@ const initialState: AppState = {
     movementLocked: false,
     specialAbilityCooldown: 0,
   },
-
-  // UI/Game state for 3D game compatibility
   gameStarted: false,
   showWarning: true,
   showGun: false,
@@ -299,43 +337,25 @@ const initialState: AppState = {
   activeWeapon: "pistol",
 };
 
-// Maximum recent events to keep (for performance)
-const MAX_RECENT_EVENTS = 50;
-
 // Create the store
 const useAppStore = create<AppStore>()(
   persist(
     (set, get) => ({
-      // Initial state
       ...initialState,
 
-      // Core state setters
       setPlayer: (player) =>
         set((state) => {
           const gameStats = updateGameStats(player);
           const gamePhase = determineGamePhase(player, state.gameSession);
           const canTakeActions = player?.game_active && player?.is_alive;
-          // Player is initialized if we have a player object OR if we already have playerStats
           const isPlayerInitialized = player !== null || state.playerStats !== null;
-
-          return {
-            player,
-            gameStats,
-            gamePhase,
-            canTakeActions: canTakeActions || false,
-            isPlayerInitialized,
-          };
+          return { player, gameStats, gamePhase, canTakeActions: canTakeActions || false, isPlayerInitialized };
         }),
 
       setPlayerStats: (playerStats) =>
         set((state) => {
-          // Player is initialized if we have playerStats OR if we have a player object
-          // This handles the case where a new account has been initialized but stats haven't synced yet
           const isPlayerInitialized = playerStats !== null || state.player !== null;
-          return {
-            playerStats,
-            isPlayerInitialized,
-          };
+          return { playerStats, isPlayerInitialized };
         }),
 
       setGameSession: (gameSession) =>
@@ -344,26 +364,15 @@ const useAppStore = create<AppStore>()(
           return { gameSession, gamePhase };
         }),
 
-      setGameConfig: (gameConfig) =>
-        set({
-          gameConfig,
-          maxActionsPerTurn: gameConfig ? 3 : 3, // Set default since no actions per turn in new model
-        }),
+      setGameConfig: (gameConfig) => set({ gameConfig, maxActionsPerTurn: 3 }),
 
-      // World state management
       setCurrentRoom: (currentRoom) => set({ currentRoom }),
 
       updateRoom: (room) =>
         set((state) => {
           const newRooms = new Map(state.rooms);
           newRooms.set(room.room_id.toString(), room);
-
-          // Update current room if it matches
-          const currentRoom =
-            state.currentRoom?.room_id.toString() === room.room_id.toString()
-              ? room
-              : state.currentRoom;
-
+          const currentRoom = state.currentRoom?.room_id.toString() === room.room_id.toString() ? room : state.currentRoom;
           return { rooms: newRooms, currentRoom };
         }),
 
@@ -372,190 +381,45 @@ const useAppStore = create<AppStore>()(
           const roomMap = new Map(rooms.map((r) => [r.room_id.toString(), r]));
           return { rooms: roomMap };
         }),
-      setNearbyDoors: (nearbyDoors) => set({ nearbyDoors }),
-      setEntities: (entities) =>
-        set(() => {
-          console.log("entities update in zustand", entities);
-          return { entities: entities };
-        }),
 
-      // Fixed updateEntity - update existing or add new
+      setNearbyDoors: (nearbyDoors) => set({ nearbyDoors }),
+
+      setEntities: (entities) => set(() => ({ entities })),
+
       updateEntity: (entity) =>
         set((state) => {
           const entityId = entity.entity_id.toString();
-          const entities = state.entities.filter(
-            (e) => e.entity_id.toString() !== entityId
-          );
+          const entities = state.entities.filter((e) => e.entity_id.toString() !== entityId);
           return { entities: [...entities, entity] };
         }),
 
-      // Fixed removeEntity - proper ID comparison
       removeEntity: (entityId) =>
         set((state) => ({
-          entities: state.entities.filter(
-            (e) => e.entity_id.toString() !== entityId.toString()
-          ),
+          entities: state.entities.filter((e) => e.entity_id.toString() !== entityId.toString()),
         })),
 
-      // Fixed updateShardLocation - update existing or add new
+      setShardLocations: (locations) => set(() => ({ shardLocations: locations })),
+
       updateShardLocation: (location) =>
         set((state) => {
           const shardId = location.shard_id.toString();
-          const shards = state.shardLocations.filter(
-            (s) => s.shard_id.toString() !== shardId
-          );
+          const shards = state.shardLocations.filter((s) => s.shard_id.toString() !== shardId);
           return { shardLocations: [...shards, location] };
         }),
 
-      // Fixed updateEntityState - update existing or add new
-      updateEntityState: (entityState) =>
-        set((state) => {
-          const entityId = entityState.entity_id.toString();
-          const states = state.entityStates.filter(
-            (s) => s.entity_id.toString() !== entityId
-          );
-          return { entityStates: [...states, entityState] };
-        }),
-
-      setEntityStates: (states) =>
-        set(() => {
-          return { entityStates: states };
-        }),
-
-      setShardLocations: (locations) =>
-        set(() => {
-          return { shardLocations: locations };
-        }),
-
-      // Game state management
       setGamePhase: (gamePhase) => set({ gamePhase }),
-      setPlayerInitialized: (isPlayerInitialized) =>
-        set({ isPlayerInitialized }),
+      setPlayerInitialized: (isPlayerInitialized) => set({ isPlayerInitialized }),
       setCanTakeActions: (canTakeActions) => set({ canTakeActions }),
       setActionsThisTurn: (actionsThisTurn) => set({ actionsThisTurn }),
-      incrementActionsThisTurn: () =>
-        set((state) => ({ actionsThisTurn: state.actionsThisTurn + 1 })),
+      incrementActionsThisTurn: () => set((state) => ({ actionsThisTurn: state.actionsThisTurn + 1 })),
       resetActionsThisTurn: () => set({ actionsThisTurn: 0 }),
 
-      // Event handling (keep recent events for UI feedback)
-      addGameStarted: (event) =>
-        set((state) => ({
-          recentEvents: {
-            ...state.recentEvents,
-            gameStarted: [
-              ...state.recentEvents.gameStarted.slice(-MAX_RECENT_EVENTS + 1),
-              event,
-            ],
-          },
-          gamePhase: GamePhase.ACTIVE,
-        })),
-
-      addGameCompleted: (event) =>
-        set((state) => ({
-          recentEvents: {
-            ...state.recentEvents,
-            gameCompleted: [
-              ...state.recentEvents.gameCompleted.slice(-MAX_RECENT_EVENTS + 1),
-              event,
-            ],
-          },
-          gamePhase: GamePhase.COMPLETED,
-        })),
-
-      addVictoryAchieved: (event) =>
-        set((state) => ({
-          recentEvents: {
-            ...state.recentEvents,
-            victoriesAchieved: [
-              ...state.recentEvents.victoriesAchieved.slice(
-                -MAX_RECENT_EVENTS + 1
-              ),
-              event,
-            ],
-          },
-          gamePhase: GamePhase.COMPLETED,
-        })),
-
-      addRoomCleared: (event) =>
-        set((state) => ({
-          recentEvents: {
-            ...state.recentEvents,
-            roomsCleared: [
-              ...state.recentEvents.roomsCleared.slice(-MAX_RECENT_EVENTS + 1),
-              event,
-            ],
-          },
-        })),
-
-      addRoomEntered: (event) =>
-        set((state) => ({
-          recentEvents: {
-            ...state.recentEvents,
-            roomsEntered: [
-              ...state.recentEvents.roomsEntered.slice(-MAX_RECENT_EVENTS + 1),
-              event,
-            ],
-          },
-        })),
-
-      addRoomExited: (event) =>
-        set((state) => ({
-          recentEvents: {
-            ...state.recentEvents,
-            roomsExited: [
-              ...state.recentEvents.roomsExited.slice(-MAX_RECENT_EVENTS + 1),
-              event,
-            ],
-          },
-        })),
-
-      addPlayerDeath: (event) =>
-        set((state) => ({
-          recentEvents: {
-            ...state.recentEvents,
-            playerDeaths: [
-              ...state.recentEvents.playerDeaths.slice(-MAX_RECENT_EVENTS + 1),
-              event,
-            ],
-          },
-          gamePhase: GamePhase.GAME_OVER,
-        })),
-
-      addShardCollected: (event) =>
-        set((state) => ({
-          recentEvents: {
-            ...state.recentEvents,
-            shardsCollected: [
-              ...state.recentEvents.shardsCollected.slice(
-                -MAX_RECENT_EVENTS + 1
-              ),
-              event,
-            ],
-          },
-        })),
-
-      clearRecentEvents: () =>
-        set({
-          recentEvents: {
-            gameStarted: [],
-            gameCompleted: [],
-            victoriesAchieved: [],
-            roomsCleared: [],
-            roomsEntered: [],
-            roomsExited: [],
-            playerDeaths: [],
-            shardsCollected: [],
-          },
-        }),
-
-      // UI actions
       setLoading: (isLoading) => set({ isLoading }),
       setError: (error) => set({ error }),
       setLastTransaction: (lastTransaction) => set({ lastTransaction }),
       setActionInProgress: (actionInProgress) => set({ actionInProgress }),
       setConnectionStatus: (connectionStatus) => set({ connectionStatus }),
 
-      // Game lifecycle
       initializeGame: () =>
         set({
           gamePhase: GamePhase.INITIALIZED,
@@ -586,28 +450,31 @@ const useAppStore = create<AppStore>()(
       resetGame: () =>
         set({
           ...initialState,
-          connectionStatus: get().connectionStatus, // Keep connection status
+          connectionStatus: get().connectionStatus,
         }),
 
-      // UI/Game actions for 3D game compatibility
-      // Around line 620, update the startGame action:
       startGame: () =>
-        set((state) => {
-          console.log("🎮 Starting game UI...");
-          console.log("Previous state:", {
-            gameStarted: state.gameStarted,
-            gamePhase: state.gamePhase,
-            playerGameActive: state.player?.game_active,
-          });
+        set(() => {
+          // Initialize local game state
+          const player = createDefaultPlayer();
+          const playerStats = createDefaultPlayerStats();
+          const gameSession = createDefaultGameSession();
+          const gameConfig = createDefaultGameConfig();
+          const gameStats = updateGameStats(player);
 
-          const newState = {
+          return {
             gameStarted: true,
             showWarning: false,
-            gamePhase: GamePhase.ACTIVE, // Always set to ACTIVE when starting UI
+            gamePhase: GamePhase.ACTIVE,
+            player,
+            playerStats,
+            gameSession,
+            gameConfig,
+            gameStats,
+            isPlayerInitialized: true,
+            canTakeActions: true,
+            connectionStatus: "connected",
           };
-
-          console.log("New state:", newState);
-          return newState;
         }),
 
       hideWarning: () => set({ showWarning: false }),
@@ -619,7 +486,6 @@ const useAppStore = create<AppStore>()(
 
       updatePosition: (position) =>
         set((state) => {
-          // Also update blockchain player position if available
           if (state.player) {
             return {
               position,
@@ -627,7 +493,7 @@ const useAppStore = create<AppStore>()(
                 ...state.player,
                 position: {
                   x: Math.round(position.x),
-                  y: Math.round(position.z), // Frontend Z maps to Contract Y
+                  y: Math.round(position.z),
                 },
               },
             };
@@ -640,7 +506,6 @@ const useAppStore = create<AppStore>()(
       setVelocity: (velocity) => set({ velocity }),
       setActiveWeapon: (activeWeapon) => set({ activeWeapon }),
 
-      // Utility getters
       canMove: () => {
         const state = get();
         return (
@@ -664,10 +529,7 @@ const useAppStore = create<AppStore>()(
 
       canCollectShard: (roomId: string, shardId: string) => {
         const state = get();
-        const shard = state.shardLocations.find(
-          (s) => s.shard_id.toString() === shardId
-        );
-
+        const shard = state.shardLocations.find((s) => s.shard_id.toString() === shardId);
         return (
           state.canTakeActions &&
           !state.actionInProgress &&
@@ -682,22 +544,16 @@ const useAppStore = create<AppStore>()(
       getEntitiesInCurrentRoom: () => {
         const state = get();
         if (!state.currentRoom) return [];
-
-        return Array.from(state.entities.values()).filter(
-          (entity) =>
-            entity.room_id.toString() ===
-              state.currentRoom?.room_id.toString() && entity.is_alive
+        return state.entities.filter(
+          (entity) => entity.room_id.toString() === state.currentRoom?.room_id.toString() && entity.is_alive
         );
       },
 
       getShardsInCurrentRoom: () => {
         const state = get();
         if (!state.currentRoom) return [];
-
-        return Array.from(state.shardLocations.values()).filter(
-          (shard) =>
-            shard.room_id.toString() ===
-              state.currentRoom?.room_id.toString() && !shard.collected
+        return state.shardLocations.filter(
+          (shard) => shard.room_id.toString() === state.currentRoom?.room_id.toString() && !shard.collected
         );
       },
 
@@ -708,28 +564,7 @@ const useAppStore = create<AppStore>()(
 
       getEntityById: (entityId: string) => {
         const state = get();
-        return (
-          state.entities.find((e) => e.entity_id.toString() === entityId) ||
-          null
-        );
-      },
-
-      hasNumberedShard: (shardType: models.NumberedShardEnum) => {
-        const state = get();
-        if (!state.player) return false;
-
-        // This would need to be adapted based on how NumberedShardEnum is structured
-        const shardTypeStr = Object.keys(shardType)[0];
-        switch (shardTypeStr) {
-          case "One":
-            return state.player.has_shard_one;
-          case "Two":
-            return state.player.has_shard_two;
-          case "Three":
-            return state.player.has_shard_three;
-          default:
-            return false;
-        }
+        return state.entities.find((e) => e.entity_id.toString() === entityId) || null;
       },
 
       isRoomCleared: (roomId: string) => {
@@ -746,7 +581,6 @@ const useAppStore = create<AppStore>()(
     {
       name: "blockrooms-store",
       partialize: (state) => ({
-        // Persist only essential data
         player: state.player,
         playerStats: state.playerStats,
         gameSession: state.gameSession,
@@ -755,7 +589,6 @@ const useAppStore = create<AppStore>()(
         isPlayerInitialized: state.isPlayerInitialized,
         gameStats: state.gameStats,
         gamePhase: state.gamePhase,
-        // UI state that should persist
         gameStarted: state.gameStarted,
         position: state.position,
       }),
@@ -765,4 +598,4 @@ const useAppStore = create<AppStore>()(
 
 export default useAppStore;
 export { GamePhase };
-export type { AppState, AppActions, AppStore };
+export type { AppState, AppActions, AppStore, Player, PlayerStats, GameSession, GameConfig, Entity, Room, ShardLocation };

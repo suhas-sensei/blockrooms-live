@@ -1,14 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
-import useAppStore, { GamePhase } from "../../zustand/store";
-import { useStarknetConnect } from "../../dojo/hooks/useStarknetConnect";
-import { useGameData } from "../../dojo/hooks/useGameData";
-import { useInitializePlayer } from "../../dojo/hooks/useInitializePlayer";
-import { useStartGame } from "../../dojo/hooks/useStartGame";
+import useAppStore from "../../zustand/store";
 import { TutorialVideo } from "./TutorialVideo";
-import { useEndGame } from "../../dojo/hooks/useEndGame";
 import { LoadingScreen } from "./LoadingScreen";
- 
 
 type Move = "up" | "down" | "left" | "right";
 
@@ -52,11 +46,9 @@ export function MainMenu(): JSX.Element {
     const tryAutoplay = async () => {
       if (!bgmRef.current) return;
       try {
-        // Chrome allows muted autoplay; unmute after starting.
         a.muted = true;
         await a.play();
         markPlaying();
-        // Unmute shortly after stable start
         setTimeout(() => {
           if (bgmRef.current) bgmRef.current.muted = false;
         }, 150);
@@ -67,7 +59,6 @@ export function MainMenu(): JSX.Element {
 
     const unlock = () => {
       if (!bgmRef.current || unlocked) return;
-      // Start with muted= false here; the gesture should permit audio
       bgmRef.current.muted = false;
       bgmRef.current.play().then(markPlaying).catch(() => void 0);
     };
@@ -78,14 +69,12 @@ export function MainMenu(): JSX.Element {
       }
     };
 
-    // Attempt immediately if visible; otherwise on first visibility
     if (document.visibilityState === "visible") {
       void tryAutoplay();
     } else {
       document.addEventListener("visibilitychange", onVis);
     }
 
-    // Fallback unlockers if autoplay is blocked
     window.addEventListener("pointerdown", unlock, { once: true });
     window.addEventListener("keydown", unlock, { once: true });
     window.addEventListener("touchstart", unlock, { once: true });
@@ -99,17 +88,14 @@ export function MainMenu(): JSX.Element {
     };
   }, []);
 
-  // Start on first meaningful click to satisfy autoplay policies
   const ensureBgm = async (): Promise<void> => {
     if (!bgmRef.current || bgmPlaying === true) return;
     try {
-      // Some browsers require play() to be directly in a user gesture call chain
       await bgmRef.current.play();
       setBgmPlaying(true);
     } catch {}
   };
 
-  // Fade out BGM and stop
   const stopBgmWithFade = (ms: number = 700): void => {
     const a = bgmRef.current;
     if (!a) return;
@@ -131,28 +117,9 @@ export function MainMenu(): JSX.Element {
     }, step);
   };
 
-  const { status, address, handleConnect, isConnecting } = useStarknetConnect();
-  const { playerStats, isLoading: playerLoading, refetch } = useGameData();
-  const {
-    initializePlayer,
-    isLoading: initializing,
-    canInitialize,
-  } = useInitializePlayer();
-  const { startGame, isLoading: startingGame, canStartGame } = useStartGame();
-  const { endGame, canEndGame } = useEndGame();
+  const { startGame: startGameUI } = useAppStore();
 
-  const {
-    setConnectionStatus,
-    setLoading,
-    gamePhase,
-    player,
-    startGame: startGameUI,
-  } = useAppStore();
-
-  const isConnected = status === "connected";
-  const hasPlayerStats = playerStats !== null;
-  const isLoading =
-    isConnecting || playerLoading || initializing || startingGame;
+  const [isLoading, setIsLoading] = useState(false);
 
   const images = useMemo(
     () => [
@@ -167,8 +134,7 @@ export function MainMenu(): JSX.Element {
   );
   const [bg, setBg] = useState(0);
   const [dir, setDir] = useState<Move>("up");
-  const [showTutorial, setShowTutorial] = useState(false);
-    const [hovered, setHovered] = useState<number | null>(null);
+  const [hovered, setHovered] = useState<number | null>(null);
 
   // Tutorial flow states
   const [showBlackScreen, setShowBlackScreen] = useState(false);
@@ -180,7 +146,7 @@ export function MainMenu(): JSX.Element {
       const timer = setTimeout(() => {
         setShowBlackScreen(false);
         setShowTutorialVideo(true);
-      }, 4000); // 4 seconds
+      }, 4000);
       return () => clearTimeout(timer);
     }
   }, [showBlackScreen]);
@@ -189,31 +155,17 @@ export function MainMenu(): JSX.Element {
   useEffect(() => {
     if (!showBlackScreen && !showTutorialVideo) return;
 
-    const handleEscape = async (e: KeyboardEvent) => {
+    const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape" || e.code === "Escape") {
         setShowBlackScreen(false);
         setShowTutorialVideo(false);
-        // Final state refresh before entering game
-        await refetch();
         startGameUI();
       }
     };
 
     window.addEventListener("keydown", handleEscape);
     return () => window.removeEventListener("keydown", handleEscape);
-  }, [showBlackScreen, showTutorialVideo, startGameUI, refetch]);
-
-  useEffect(() => {
-    setConnectionStatus(
-      status === "connected"
-        ? "connected"
-        : isConnecting
-        ? "connecting"
-        : "disconnected"
-    );
-  }, [status, isConnecting, setConnectionStatus]);
-
-  useEffect(() => setLoading(isLoading), [isLoading, setLoading]);
+  }, [showBlackScreen, showTutorialVideo, startGameUI]);
 
   // tiny ambient background swapper
   useEffect(() => {
@@ -224,107 +176,16 @@ export function MainMenu(): JSX.Element {
     return () => clearInterval(t);
   }, [images.length]);
 
-  const canEnterGame = isConnected && hasPlayerStats && !startingGame;
+  const handlePlayGame = async (): Promise<void> => {
+    await ensureBgm();
+    setIsLoading(true);
+    stopBgmWithFade(700);
 
-const handlePlayForFree = async ( ): Promise<void> => {
-  await ensureBgm();
- 
-  // Step 1: Connect wallet if not connected
-  if (!isConnected) {
-    console.log('🔌 Connecting wallet...');
-    await handleConnect();
-    await new Promise((r) => setTimeout(r, 1500));
-    await refetch();
-    // Continue to next step instead of returning
-  }
-
-  // Re-check connection status after potential connection
-  const currentStatus = useAppStore.getState().connectionStatus;
-  if (currentStatus !== 'connected') {
-    console.log('❌ Wallet connection failed');
-    return; // Stop if connection failed
-  }
-
-  // Step 2: Initialize player if needed
-  const currentPlayerStats = useAppStore.getState().playerStats;
-  if (!currentPlayerStats && canInitialize) {
-    console.log('🎮 Initializing player...');
-    const res = await initializePlayer();
-    if (res?.success) {
-      await new Promise((r) => setTimeout(r, 2000));
-      await refetch();
-      // Continue to next step instead of returning
-    } else {
-      console.log('❌ Player initialization failed');
-      return; // Stop if initialization failed
-    }
-  }
-
-  // Step 3: Enter the game (with session cleanup if needed)
-  console.log('🎬 Starting game...');
-  stopBgmWithFade(700);
-
-  // Get fresh state
-  const freshState = useAppStore.getState();
-  const currentRoomId = freshState.currentRoom?.room_id ? String(freshState.currentRoom.room_id) : "0";
-  const isNotInStartingRoom = currentRoomId !== "0";
-
-  // If player is not in room 0 (starting room), end the previous session first
-  if (isNotInStartingRoom && canEndGame) {
-    console.log(`🔄 Player is in room ${currentRoomId}, ending previous session...`);
-    try {
-      await endGame();
-    } catch(e) {
-      console.error("Error ending game:", e);
-      // ignore; proceed to refresh and start
-    }
-
-    // HARD REFRESH: refetch until player is back in room 0
-    console.log("⏳ Waiting for player to return to room 0...");
-    try {
-      for (let i = 0; i < 18; i++) {
-        await refetch();
-        await new Promise((r) => setTimeout(r, 400));
-        const freshState2 = useAppStore.getState();
-        const newRoomId = freshState2.currentRoom?.room_id ? String(freshState2.currentRoom.room_id) : "0";
-        console.log(`Room check ${i + 1}/18: Current room = ${newRoomId}`);
-        if (newRoomId === "0") {
-          console.log("✅ Player back in room 0, proceeding...");
-          break;
-        }
-      }
-    } catch(e) {
-      console.error("Error during room polling:", e);
-      // even if polling fails, still move on
-    }
-  }
-
-  // Start a fresh session if allowed
-  if (canStartGame) {
-    console.log('▶️ Starting new game session...');
-    try {
-      await startGame();
-      // Aggressive refetch burst to ensure brand-new session values are loaded
-      await refetch();
-      await new Promise((r) => setTimeout(r, 400));
-      await refetch();
-      await new Promise((r) => setTimeout(r, 300));
-      await refetch();
-      // Final wait to ensure state propagation
-      await new Promise((r) => setTimeout(r, 200));
-    } catch {
-      // swallow; UI flow continues
-    }
-  }
-
-  // Start tutorial sequence: black screen -> video -> game
-  console.log('✅ Launching game UI...');
-  setShowBlackScreen(true);
-};
-
-
-
-    
+    // Start tutorial sequence: black screen -> video -> game
+    console.log("Starting game...");
+    setShowBlackScreen(true);
+    setIsLoading(false);
+  };
 
   return (
     <div
@@ -333,12 +194,10 @@ const handlePlayForFree = async ( ): Promise<void> => {
         inset: 0,
         backgroundImage: `url(${images[bg]})`,
         backgroundSize: "cover",
-               backgroundPosition: "right center",
-
+        backgroundPosition: "right center",
       }}
     >
- 
-          <div
+      <div
         style={{
           position: "relative",
           height: "100%",
@@ -372,14 +231,10 @@ const handlePlayForFree = async ( ): Promise<void> => {
             userSelect: "none",
           }}
         >
-          
-
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-             
-
-            {/* PLAY ON MAINNET — handles everything on mainnet */}
+            {/* PLAY GAME button */}
             <button
-              onClick={() => handlePlayForFree()}
+              onClick={() => handlePlayGame()}
               disabled={isLoading}
               onMouseEnter={() => setHovered(1)}
               onMouseLeave={() => setHovered(null)}
@@ -409,19 +264,7 @@ const handlePlayForFree = async ( ): Promise<void> => {
                 xmlns="http://www.w3.org/2000/svg"
                 style={{ flexShrink: 0 }}
               >
-                <circle
-                  cx="12"
-                  cy="12"
-                  r="9"
-                  stroke="#FFD700"
-                  strokeWidth="2"
-                />
-                <path
-                  d="M12 6V12L16 14"
-                  stroke="#FFD700"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
+                <polygon points="5,3 19,12 5,21" fill="#FFD700" />
               </svg>
               <span
                 style={{
@@ -432,23 +275,12 @@ const handlePlayForFree = async ( ): Promise<void> => {
                   fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
                 }}
               >
-                {isLoading ? "LOADING..." : "PLAY ON MAINNET"}
+                {isLoading ? "LOADING..." : "PLAY GAME"}
               </span>
             </button>
           </div>
         </div>
       </div>
-
-      {showTutorial && (
-        <TutorialVideo
-          onEnded={async () => {
-            setShowTutorial(false);
-            // Final state refresh before revealing game UI
-            await refetch();
-            startGameUI();
-          }}
-        />
-      )}
 
       {/* Loading screen with glitchy effect (4 seconds) */}
       {showBlackScreen && (
@@ -464,11 +296,8 @@ const handlePlayForFree = async ( ): Promise<void> => {
       {/* Tutorial video after black screen */}
       {showTutorialVideo && (
         <TutorialVideo
-          onEnded={async () => {
+          onEnded={() => {
             setShowTutorialVideo(false);
-            // Final state refresh to ensure clean session before revealing game UI
-            await refetch();
-            await new Promise((r) => setTimeout(r, 100));
             startGameUI();
           }}
         />

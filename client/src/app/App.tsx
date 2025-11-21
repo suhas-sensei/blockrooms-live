@@ -6,8 +6,8 @@ import { PointerLockControls } from "@react-three/drei";
 import { Vector3 } from "three";
 import * as THREE from "three";
 import { TransactionPopup } from "../components/ui/TransactionPopup";
-import { usePlayerMovement } from "../dojo/hooks/usePlayerMovement";
-import { useAttackEntity } from "../dojo/hooks/useAttackEntity";
+import { usePlayerMovement } from "../hooks/usePlayerMovement";
+import { useAttackEntity } from "../hooks/useAttackEntity";
 import useAppStore, { GamePhase } from "../zustand/store";
 
 import { MainMenu } from "../components/ui/MainMenu";
@@ -66,10 +66,10 @@ import {
   BloodEffect as BloodEffectType,
   BulletHole as BulletHoleType,
 } from "../types/game";
-import { useOpenDoor } from "../dojo/hooks/useDoor";
-import { useCollectShard } from "../dojo/hooks/useCollectShard";
-import { useGameData } from "../dojo/hooks/useGameData";
-import { useEndGame } from "../dojo/hooks/useEndGame";
+import { useOpenDoor } from "../hooks/useDoor";
+import { useCollectShard } from "../hooks/useCollectShard";
+import { useGameData } from "../hooks/useGameData";
+import { useEndGame } from "../hooks/useEndGame";
 
 // Door Wall Component
 const DoorWall = ({  //THESE ARE DOORS WHICH ARE RED COLOURED. BEING NEAR THEM OPENS UP THE DOOR BY E AND SPAWNS THE ENTITY.
