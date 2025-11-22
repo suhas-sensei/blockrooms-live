@@ -2254,8 +2254,8 @@ function FluoroFixture({ nodeName }: { nodeName: string }) {
     const m = src.material as THREE.MeshStandardMaterial;
     if (m && "emissive" in m) {
       m.color.set("#ffffff");                     // pure white panel
-      m.emissive = new THREE.Color("#fff8d6");    // warm bright glow
-      m.emissiveIntensity = 3.0;                  // panel looks lit up
+      m.emissive = new THREE.Color("#000000");    // no glow
+      m.emissiveIntensity = 0.0;                  // panel not lit
       m.roughness = 1.0;
       m.metalness = 0.0;
     }
@@ -2365,12 +2365,12 @@ const carpetBump = useMemo(() => {
             if (el) lightRefs.current[i] = el;
           }}
           color="#fffbe6"
-          intensity={LIGHT_INTENSITY}
+          intensity={0}
           distance={LIGHT_DISTANCE}
           decay={LIGHT_DECAY}
           castShadow={false}
           position={p}
-          visible={true}
+          visible={false}
 
         />
       ))}

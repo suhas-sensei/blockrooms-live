@@ -2118,35 +2118,35 @@ if (event.key.toLowerCase() === "b") {
 
         <Flashlight />
 
-        <directionalLight
-          position={[420, 20, 420]}
-          intensity={0.8}
+        <rectAreaLight
+          position={[420, 10, 420]}
+          width={4}
+          height={4}
+          intensity={8}
           color="#fff8dc"
-          castShadow
-          shadow-mapSize-width={512}
-          shadow-mapSize-height={512}
-          shadow-camera-far={100}
-          shadow-camera-left={-50}
-          shadow-camera-right={50}
-          shadow-camera-top={50}
-          shadow-camera-bottom={-50}
+          rotation={[-Math.PI / 2, 0, 0]}
         />
-        <directionalLight
-          position={[380, 15, 380]}
-          intensity={0.4}
+        <rectAreaLight
+          position={[380, 8, 380]}
+          width={3}
+          height={3}
+          intensity={4}
           color="#f4e4bc"
+          rotation={[-Math.PI / 2, 0, 0]}
         />
-        <pointLight
-          position={[400, 10, 400]}
-          intensity={0.5}
+        <rectAreaLight
+          position={[410, 5, 400]}
+          width={5}
+          height={5}
+          intensity={5}
           color="#fff8dc"
-          distance={100}
-        />
+          rotation={[-Math.PI / 2, 0, 0]}
+        /> 
 
         <rectAreaLight
           position={[381, 5, 399]}
-          width={5}
-          height={5}
+          width={2}
+          height={3}
           intensity={5}
           color="#ffffff"
           rotation={[-Math.PI / 2, 0, 0]}
