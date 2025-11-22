@@ -36,24 +36,13 @@ import { PickupPrompt } from "../components/ui/PickupPrompt";
 import { TalkieIntro } from "../components/ui/TalkieIntro";
 import { TalkieTextSequence } from "../components/ui/TalkieTextSequence";
 import { SpawnTextSequence } from "../components/ui/SpawnTextSequence";
-import { SkeletyDeathTextSequence } from "../components/ui/SkeletyDeathTextSequence";
 import { HazyOverlay } from "../components/ui/HazyOverlay";
 import { EnemyWarningText } from "../components/ui/EnemyWarningText";
 import { DoorStatusMessage } from "../components/ui/DoorStatusMessage";
 import { FailureScreen } from "../components/ui/FailureScreen";
 import { CameraShake } from "../components/systems/CameraShake";
 import { worldToScreen } from "../utils/worldToScreen";
-// near your other model imports
-import { Ghost } from "../models/Ghost";
 // import Pop, { PopHandle } from "../models/Pop";
-import GhostPatrol from "../models/GhostPatrol";
-import GhostPatrol2 from "../models/GhostPatrol2";
-import GhostPatrol3 from "../models/GhostPatrol3";
-import GhostPatrol4 from "../models/GhostPatrol4";
-import GhostPatrol5 from "../models/GhostPatrol5";
-import GhostPatrol6 from "../models/GhostPatrol6";
-import GhostPatrol7 from "../models/GhostPatrol7";
-import { SkeletyEnemy } from "../components/game/SkeletyEnemy";
 
 
 import LightProximity from "../components/ui/LightProximity";
@@ -125,6 +114,9 @@ const AimProbe = ({ onUpdate }: { onUpdate: (aiming: boolean) => void }) => {
     const ray = raycasterRef.current;
     ray.setFromCamera(center.current, camera);
 
+    // Optimize: set max distance to avoid checking far objects
+    ray.far = 50; // only check entities within 50 units
+
     const hits = ray.intersectObjects(scene.children, true);
 
     // consider a hit if any intersected object (or its parent chain) has userData.isEntity
@@ -160,6 +152,7 @@ const PickupPositionTracker = ({
   onUpdate: (positions: PickupScreenPos[]) => void;
 }) => {
   const { camera } = useThree();
+  const worldPos = useRef(new THREE.Vector3()); // Reuse Vector3 to avoid allocations
 
   useFrame(() => {
     const positions: PickupScreenPos[] = [];
@@ -167,9 +160,9 @@ const PickupPositionTracker = ({
     pickups.forEach((pickup) => {
       if (!pickup.show) return;
 
-      // Convert world position to screen coordinates
-      const worldPos = new THREE.Vector3(pickup.x, 0.5, pickup.z); // Y=0.5 to place prompt slightly above ground
-      const screenPos = worldToScreen(worldPos, camera);
+      // Convert world position to screen coordinates (reuse Vector3)
+      worldPos.current.set(pickup.x, 0.5, pickup.z); // Y=0.5 to place prompt slightly above ground
+      const screenPos = worldToScreen(worldPos.current, camera);
 
       positions.push({
         x: screenPos.x,
@@ -205,63 +198,6 @@ function Force720pHighPerf() {
   return null;
 }
 
-// Left-click shooter that only affects Ghost 1 / Ghost 2
-// FUNCTION TO KILL THE FE GHOST
-const GhostClickShooter = ({
-  ghost1Ref,
-  ghost2Ref,
-  enabled = true,
-  onGhostShot,
-}: {
-  ghost1Ref: React.RefObject<THREE.Group>;
-  ghost2Ref: React.RefObject<THREE.Group>;
-  enabled?: boolean;
-  onGhostShot: (which: 1 | 2, hit: THREE.Intersection) => void;
-}) => {
-  const { camera, scene } = useThree();
-  const raycasterRef = useRef(new THREE.Raycaster());
-  const center = useRef(new THREE.Vector2(0, 0)); // screen center
-
-  useEffect(() => {
-    const onMouseDown = (e: MouseEvent) => {
-      if (!enabled) return;
-      if (e.button !== 0) return; // only left-click
-
-      const ray = raycasterRef.current;
-      ray.setFromCamera(center.current, camera);
-
-      const hits = ray.intersectObjects(scene.children, true);
-      if (!hits.length) return;
-
-      // find if any hit belongs under ghost1Ref or ghost2Ref
-      const first = hits[0];
-      let o: THREE.Object3D | null = first.object;
-
-      const g1 = ghost1Ref.current;
-      const g2 = ghost2Ref.current;
-
-      let which: 1 | 2 | null = null;
-      while (o) {
-        if (g1 && o === g1) {
-          which = 1;
-          break;
-        }
-        if (g2 && o === g2) {
-          which = 2;
-          break;
-        }
-        o = o.parent as THREE.Object3D | null;
-      }
-
-      if (which) onGhostShot(which, first);
-    };
-
-    window.addEventListener("mousedown", onMouseDown);
-    return () => window.removeEventListener("mousedown", onMouseDown);
-  }, [enabled, camera, scene, ghost1Ref, ghost2Ref, onGhostShot]);
-
-  return null;
-};
 
 // Small glowing cubes that bob/float near where the enemy cube was
 // I WILL REMOVE THIS NOT NEEDED
@@ -335,15 +271,36 @@ function ExposeCamera() {
 function AutoLightHoles() {
   const { scene } = useThree();
   const tmp = useRef(new THREE.Vector3());
+  const lightsCache = useRef<THREE.Light[]>([]);
+  const frameCount = useRef(0);
+
+  // Cache lights on mount and refresh every 60 frames (1 second) instead of every frame
+  useEffect(() => {
+    const updateLightsCache = () => {
+      const lights: THREE.Light[] = [];
+      scene.traverse((obj) => {
+        const isSpot = (obj as any).isSpotLight;
+        const isPoint = (obj as any).isPointLight;
+        if (isSpot || isPoint) {
+          lights.push(obj as THREE.Light);
+        }
+      });
+      lightsCache.current = lights;
+    };
+
+    updateLightsCache();
+
+    // Update cache every second in case lights are added/removed
+    const interval = setInterval(updateLightsCache, 1000);
+    return () => clearInterval(interval);
+  }, [scene]);
 
   useFrame(() => {
+    // Only use cached lights, don't traverse scene every frame!
     const holes: { x: number; y: number; z: number; r: number }[] = [];
-    scene.traverse((obj) => {
-      // Only local lights should reduce darkness
-      const isSpot = (obj as any).isSpotLight;
-      const isPoint = (obj as any).isPointLight;
-      if (!isSpot && !isPoint) return;
 
+    lightsCache.current.forEach((obj) => {
+      const isPoint = (obj as any).isPointLight;
       const light = obj as THREE.Light & {
         distance?: number;
         intensity: number;
@@ -351,17 +308,16 @@ function AutoLightHoles() {
       obj.getWorldPosition(tmp.current);
 
       // Map light strength -> small world radius for DarknessMask
-      // (DarknessMask multiplies 'r' by ~90px internally; keep r small)
-      let r = 1.0 + (light.intensity ?? 1) * 0.12; // base
-      if (isPoint) r += 0.15; // point lights a touch wider
+      let r = 1.0 + (light.intensity ?? 1) * 0.12;
+      if (isPoint) r += 0.15;
       if (typeof light.distance === "number" && isFinite(light.distance)) {
-        r += Math.min(1.0, light.distance / 120); // gentle widen with distance
+        r += Math.min(1.0, light.distance / 120);
       }
 
       holes.push({ x: tmp.current.x, y: tmp.current.y, z: tmp.current.z, r });
     });
 
-    (window as any).__LIGHT_HOLES = holes; // DarknessMask will read this
+    (window as any).__LIGHT_HOLES = holes;
   });
 
   return null;
@@ -713,11 +669,6 @@ const playTrack = (src: string) => {
   const [ghost5Dead, setGhost5Dead] = useState(false);
   const [ghost6Dead, setGhost6Dead] = useState(false);
   const [ghost7Dead, setGhost7Dead] = useState(false);
-
-  // Skelety enemy state
-  const [skeletyVisible, setSkeletyVisible] = useState(true);
-  const [skeletyDead, setSkeletyDead] = useState(false);
-  const [showSkeletyDeathText, setShowSkeletyDeathText] = useState(false);
 
   // --- Ghost spawn gating --- (v2)
 
@@ -1842,11 +1793,6 @@ if (event.key.toLowerCase() === "b") {
         ]);
       }
 
-      // Check if Skelety was hit (Skelety handles its own hit detection via event)
-      if (!skeletyDead) {
-        window.dispatchEvent(new CustomEvent('skelety:shot', { detail: { hit } }));
-      }
-
     // ✅ Count as a transaction ONLY if:
       // 1) the shot actually hit an entity (flag may be on a parent),
       // 2) the active weapon is the SHOTGUN, and
@@ -2137,9 +2083,13 @@ if (event.key.toLowerCase() === "b") {
     depth: true,
     stencil: false,
     preserveDrawingBuffer: false, // better perf (unless you need to read pixels / screenshots)
+    logarithmicDepthBuffer: false, // default but explicit for perf
+    precision: "highp",      // high precision for better GPU utilization
+    failIfMajorPerformanceCaveat: false, // ensure it runs even on lower-end GPUs
   }}
-  frameloop="always"         // keep rendering (don’t auto-throttle)
+  frameloop="always"         // keep rendering (don't auto-throttle)
   shadows                    // keep if you use shadows; remove for extra perf
+  performance={{ min: 0.95 }} // maintain near 60fps (57fps minimum)
 
   camera={{
   fov: 60,
@@ -2167,22 +2117,14 @@ if (event.key.toLowerCase() === "b") {
         <AutoLightHoles />
 
         <Flashlight />
-        <GhostClickShooter
-          ghost1Ref={ghost1Ref}
-          ghost2Ref={ghost2Ref}
-          enabled={true}
-          onGhostShot={handleGhostShot}
-        />
 
         <directionalLight
           position={[420, 20, 420]}
           intensity={0.8}
           color="#fff8dc"
           castShadow
-        shadow-mapSize-width={1024}
-
-shadow-mapSize-height={2048}
-
+          shadow-mapSize-width={512}
+          shadow-mapSize-height={512}
           shadow-camera-far={100}
           shadow-camera-left={-50}
           shadow-camera-right={50}
@@ -2201,123 +2143,22 @@ shadow-mapSize-height={2048}
           distance={100}
         />
 
+        <rectAreaLight
+          position={[381, 5, 399]}
+          width={5}
+          height={5}
+          intensity={5}
+          color="#ffffff"
+          rotation={[-Math.PI / 2, 0, 0]}
+        />
+
+        
+
         <FloorGrid minorStep={1} highlightStep={20} y={0.01} />
         {/* <Pop
           ref={popRef}
 
         /> */}
-        {/* GHOST 1 */}
-        {ghost1Spawned && !ghost1Dead && (
-          <group ref={ghost1Ref} userData={{ isGhost: true, ghostId: 1 }}>
-            <GhostPatrol
-              y={1.2}
-              loops={4}
-              speed={2.5}
-              yawOffset={-1}
-              scale={1.5} // ⬅️ was 1
-              // collideRadius={2.7}  // ⬅️ optional: 1.5 × 1.8 to keep spacing
-            />
-          </group>
-        )}
-
-        {/* GHOST 2 */}
-        {ghost2Spawned && !ghost2Dead && (
-          <group ref={ghost2Ref} userData={{ isGhost: true, ghostId: 2 }}>
-            <GhostPatrol2
-              y={0.9}
-              loops={4}
-              speed={2.5}
-              yawOffset={-1}
-              scale={1.5}
-              // collideRadius={2.7}
-            />
-          </group>
-        )}
-
-        {/* GHOST 3 */}
-        {ghost3Spawned && !ghost3Dead && (
-          <group ref={ghost3Ref} userData={{ isGhost: true, ghostId: 3 }}>
-            <GhostPatrol3
-              y={0.9}
-              loops={4}
-              speed={2.5}
-              yawOffset={-1}
-              scale={1.5}
-              // collideRadius={2.7}
-            />
-          </group>
-        )}
-
-        {/* GHOST 4 */}
-        {ghost4Spawned && !ghost4Dead && (
-          <group ref={ghost4Ref} userData={{ isGhost: true, ghostId: 4 }}>
-            <GhostPatrol4
-              y={0.9}
-              speed={2.5}
-              yawOffset={-1}
-              scale={1.5}
-              // collideRadius={2.7}
-              onVanish={() => setGhost4Dead(true)}
-            />
-          </group>
-        )}
-
-        {/* GHOST 5 — spawns at game start, vanishes 5s after first seen */}
-        {!ghost5Dead && (
-          <group ref={ghost5Ref} userData={{ isGhost: true, ghostId: 5 }}>
-            <GhostPatrol5
-              y={0.9}
-              speed={2.0}
-              yawOffset={-1}
-              scale={2} // change if you want bigger/smaller
-              onVanish={() => setGhost5Dead(true)}
-            />
-          </group>
-        )}
-
-        {/* GHOST 6 — spawns at game start, vanishes 5s after first seen */}
-        {!ghost6Dead && (
-          <group ref={ghost6Ref} userData={{ isGhost: true, ghostId: 6 }}>
-            <GhostPatrol6
-              y={0.9}
-              speed={2.0}
-              yawOffset={-1}
-              scale={2} // change if you want bigger/smaller
-              onVanish={() => setGhost6Dead(true)}
-            />
-          </group>
-        )}
-
-
-                {/* GHOST 7 */}
-        {ghost7Spawned && !ghost7Dead && (
-          <group ref={ghost7Ref} userData={{ isGhost: true, ghostId: 7 }}>
-            <GhostPatrol7
-              y={0.9}
-              speed={2.5}
-              yawOffset={-1}
-              scale={1.5}
-              // collideRadius={2.7}
-              onVanish={() => setGhost7Dead(true)}
-            />
-          </group>
-        )}
-
-        {/* Skelety Enemy */}
-        <SkeletyEnemy
-          playerPosition={playerPosition}
-          hasGun={showGun}
-          visible={skeletyVisible && !skeletyDead}
-          onHit={() => {
-            console.log('💀 Skelety killed!');
-            setSkeletyDead(true);
-            setSkeletyVisible(false);
-            // Show death text sequence after a short delay
-            setTimeout(() => {
-              setShowSkeletyDeathText(true);
-            }, 1000);
-          }}
-        />
 
         {/* Room 1 Doors */}
         <DoorWall
@@ -2654,9 +2495,6 @@ shadow-mapSize-height={2048}
 
       {/* Talkie Text Sequence - displays messages after picking up the talkie */}
       {showTalkieIntro && <TalkieTextSequence />}
-
-      {/* Skelety Death Text Sequence - displays messages after Skelety dies */}
-      {showSkeletyDeathText && <SkeletyDeathTextSequence onComplete={() => setShowSkeletyDeathText(false)} />}
 
       {/* Enemy Warning Text - displays messages after first ghost shot */}
       {showEnemyWarning && (

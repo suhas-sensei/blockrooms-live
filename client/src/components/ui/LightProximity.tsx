@@ -1,7 +1,7 @@
 // LightProximity.tsx
 import { useThree, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
-import React, { useRef } from "react";
+import React, { useRef, useEffect } from "react";
 
 export default function LightProximity({
   reach = 18,     // world units at which darkness is back to max
@@ -10,22 +10,41 @@ export default function LightProximity({
 }: { reach?: number; minA?: number; maxA?: number }) {
   const { scene, camera } = useThree();
   const tmp = useRef(new THREE.Vector3());
+  const lightsCache = useRef<THREE.Light[]>([]);
+
+  // Cache lights instead of traversing scene every frame
+  useEffect(() => {
+    const updateLightsCache = () => {
+      const lights: THREE.Light[] = [];
+      scene.traverse((obj) => {
+        const isPoint = (obj as any).isPointLight;
+        const isSpot = (obj as any).isSpotLight;
+        const isRect = (obj as any).isRectAreaLight;
+        if (isPoint || isSpot || isRect) {
+          lights.push(obj as THREE.Light);
+        }
+      });
+      lightsCache.current = lights;
+    };
+
+    updateLightsCache();
+
+    // Update cache every second
+    const interval = setInterval(updateLightsCache, 1000);
+    return () => clearInterval(interval);
+  }, [scene]);
 
   useFrame(() => {
     let bestProx = 0; // 0 = far, 1 = right under a light
 
-    scene.traverse((obj) => {
-      const isPoint = (obj as any).isPointLight;
-      const isSpot  = (obj as any).isSpotLight;
-      const isRect  = (obj as any).isRectAreaLight;
-      if (!isPoint && !isSpot && !isRect) return;
-
+    // Use cached lights instead of scene.traverse every frame!
+    lightsCache.current.forEach((obj) => {
       obj.getWorldPosition(tmp.current);
 
       // distance to the camera
       const d = camera.position.distanceTo(tmp.current);
 
-      // prefer the light’s own "distance" if provided
+      // prefer the light's own "distance" if provided
       let r = reach;
       const lightDist = (obj as any).distance;
       if (typeof lightDist === "number" && lightDist > 0) {
